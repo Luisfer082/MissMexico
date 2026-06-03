@@ -4,6 +4,7 @@ import LoginPage from '../pages/LoginPage'
 import NoAutorizado from '../pages/NoAutorizado'
 import EncargadoLayout from '../layouts/EncargadoLayout'
 import EncargadoDashboard from '../pages/encargado/EncargadoDashboard'
+import EdicionesPage from '../pages/encargado/EdicionesPage'
 import ParticipantesPage from '../pages/encargado/ParticipantesPage'
 import EtapasPage from '../pages/encargado/EtapasPage'
 import RetosPage from '../pages/encargado/RetosPage'
@@ -30,6 +31,7 @@ function AppRouter() {
           }
         >
           <Route index element={<EncargadoDashboard />} />
+          <Route path="ediciones" element={<EdicionesPage />} />
           <Route path="participantes" element={<ParticipantesPage />} />
           <Route path="etapas" element={<EtapasPage />} />
           <Route path="retos" element={<RetosPage />} />

@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase'
 import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import ParticipanteModal from '../../components/ParticipanteModal'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import type { Tables } from '../../types/database'
 
 type Participante = Tables<'participants'>
@@ -37,6 +38,9 @@ function ParticipantesPage() {
   const [modalAbierto, setModalAbierto] = useState(false)
   const [participanteEditando, setParticipanteEditando] = useState<Participante | undefined>(undefined)
 
+  // Participante pendiente de confirmar borrado (null = sin confirmación abierta)
+  const [participanteAEliminar, setParticipanteAEliminar] = useState<Participante | null>(null)
+
   // Contador para disparar recarga después de guardar
   const [recargar, setRecargar] = useState(0)
 
@@ -66,11 +70,10 @@ function ParticipantesPage() {
     return () => { cancelado = true }
   }, [edicionId, recargar])
 
-  const handleEliminar = async (participante: Participante) => {
-    const confirmado = window.confirm(
-      `¿Eliminar a ${participante.full_name}? Esta acción no se puede deshacer.`
-    )
-    if (!confirmado) return
+  const handleConfirmarEliminar = async () => {
+    if (!participanteAEliminar) return
+    const participante = participanteAEliminar
+    setParticipanteAEliminar(null)
 
     await toast.promise(
       (async () => {
@@ -213,7 +216,7 @@ function ParticipantesPage() {
                         Editar
                       </button>
                       <button
-                        onClick={() => void handleEliminar(p)}
+                        onClick={() => setParticipanteAEliminar(p)}
                         className="px-3 py-1 text-xs font-medium text-red-600 border border-red-200
                           hover:bg-red-50 rounded-md transition-colors"
                       >
@@ -228,13 +231,25 @@ function ParticipantesPage() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modal crear/editar */}
       {modalAbierto && (
         <ParticipanteModal
           edicionId={edicion.id}
           participante={participanteEditando}
           onClose={handleCerrarModal}
           onGuardado={handleGuardado}
+        />
+      )}
+
+      {/* Confirmación de borrado */}
+      {participanteAEliminar && (
+        <ConfirmDialog
+          titulo="Eliminar participante"
+          mensaje={`¿Eliminar a ${participanteAEliminar.full_name}? Esta acción no se puede deshacer.`}
+          textoConfirmar="Eliminar"
+          peligro
+          onConfirmar={() => void handleConfirmarEliminar()}
+          onCancelar={() => setParticipanteAEliminar(null)}
         />
       )}
     </div>
