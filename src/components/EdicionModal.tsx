@@ -101,7 +101,7 @@ function EdicionModal({ edicion, onClose, onGuardado }: Props) {
               onChange={(e) => setName(e.target.value)}
               disabled={submitting}
               className={`w-full px-3 py-2 border rounded-lg text-sm text-slate-900 placeholder-slate-400
-                focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors
+                focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-colors
                 ${errors.name ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
               placeholder="Ej. Miss México 2026"
             />
@@ -120,7 +120,7 @@ function EdicionModal({ edicion, onClose, onGuardado }: Props) {
               onChange={(e) => setYear(e.target.value)}
               disabled={submitting}
               className={`w-full px-3 py-2 border rounded-lg text-sm text-slate-900 placeholder-slate-400
-                focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent transition-colors
+                focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-colors
                 ${errors.year ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
               placeholder="2026"
             />
@@ -142,9 +142,9 @@ function EdicionModal({ edicion, onClose, onGuardado }: Props) {
           <button
             type="submit"
             disabled={submitting}
-            className="flex-1 py-2 px-4 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400
+            className="flex-1 py-2 px-4 bg-brand-600 hover:bg-brand-700 disabled:bg-brand-400
               text-white font-medium rounded-lg text-sm transition-colors
-              focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
+              focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
           >
             {submitting ? 'Guardando...' : esEdicion ? 'Actualizar' : 'Crear'}
           </button>

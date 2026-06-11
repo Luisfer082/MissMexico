@@ -100,7 +100,7 @@ function ScoreCell({ scoreId, value, onSave }: Props) {
         return 'ring-2 ring-red-400 border-transparent'
       default:
         // idle
-        return 'border border-gray-200 focus:ring-2 focus:ring-rose-500 focus:border-transparent'
+        return 'border border-gray-200 focus:ring-2 focus:ring-brand-500 focus:border-transparent'
     }
   })()
 

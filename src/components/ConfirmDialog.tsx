@@ -43,7 +43,7 @@ function ConfirmDialog({
               focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                 peligro
                   ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                  : 'bg-rose-600 hover:bg-rose-700 focus:ring-rose-500'
+                  : 'bg-brand-600 hover:bg-brand-700 focus:ring-brand-500'
               }`}
           >
             {textoConfirmar}

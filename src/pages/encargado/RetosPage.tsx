@@ -100,7 +100,7 @@ function RetosPage() {
   if (loadingEdicion) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-6 h-6 border-4 border-rose-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -124,8 +124,8 @@ function RetosPage() {
         </div>
         <button
           onClick={handleAbrirNuevo}
-          className="flex items-center gap-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white
-            text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white
+            text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -148,7 +148,7 @@ function RetosPage() {
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Buscar por nombre..."
             className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-slate-900
-              placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+              placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
       </div>
@@ -157,7 +157,7 @@ function RetosPage() {
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loadingRetos ? (
           <div className="flex items-center justify-center py-16">
-            <div className="w-6 h-6 border-4 border-rose-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-6 h-6 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : retosFiltrados.length === 0 ? (
           <div className="text-center py-16">

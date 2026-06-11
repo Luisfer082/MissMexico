@@ -119,7 +119,7 @@ function MatrizCalificaciones({ participantes, retos, getScore, onSaveScore }: P
                       className={[
                         'flex-shrink-0 inline-flex items-center justify-center',
                         'w-6 h-6 rounded-full',
-                        'bg-rose-100 text-rose-700 text-xs font-semibold',
+                        'bg-brand-100 text-brand-700 text-xs font-semibold',
                       ].join(' ')}
                     >
                       {p.sash_number}

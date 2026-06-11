@@ -93,7 +93,7 @@ function LoginPage() {
       <div className="w-full max-w-md">
         {/* Encabezado */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-rose-600 rounded-full mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-600 rounded-full mb-4">
             <span className="text-white text-2xl font-bold">M</span>
           </div>
           <h1 className="text-3xl font-bold text-slate-900">Miss México</h1>
@@ -117,7 +117,7 @@ function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className={`w-full px-3 py-2 border rounded-lg text-sm text-slate-900 placeholder-slate-400
-                  focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent
+                  focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
                   transition-colors ${errors.email ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                 placeholder="usuario@ejemplo.com"
                 disabled={submitting}
@@ -139,7 +139,7 @@ function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className={`w-full px-3 py-2 border rounded-lg text-sm text-slate-900 placeholder-slate-400
-                  focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent
+                  focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
                   transition-colors ${errors.password ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                 placeholder="••••••••"
                 disabled={submitting}
@@ -153,9 +153,9 @@ function LoginPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400
+              className="w-full py-2.5 px-4 bg-brand-600 hover:bg-brand-700 disabled:bg-brand-400
                 text-white font-medium rounded-lg text-sm transition-colors
-                focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
+                focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
             >
               {submitting ? 'Iniciando sesión...' : 'Iniciar sesión'}
             </button>

@@ -11,9 +11,9 @@ function formatearNum(n: number): string {
 
 // Devuelve las clases del badge de posición según el ranking
 function clasesBadge(posicion: number): string {
-  if (posicion === 1) return 'bg-rose-600 text-white'
-  if (posicion === 2) return 'bg-rose-400 text-white'
-  if (posicion === 3) return 'bg-rose-200 text-rose-800'
+  if (posicion === 1) return 'bg-brand-600 text-white'
+  if (posicion === 2) return 'bg-brand-400 text-white'
+  if (posicion === 3) return 'bg-brand-200 text-brand-800'
   return 'bg-gray-100 text-slate-500'
 }
 

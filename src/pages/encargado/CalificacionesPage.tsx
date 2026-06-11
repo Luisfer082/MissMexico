@@ -19,7 +19,7 @@ function CalificacionesPage() {
   if (loadingEdicion) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-6 h-6 border-4 border-rose-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -54,7 +54,7 @@ function CalificacionesPage() {
             className={[
               'px-4 py-2 text-sm font-medium transition-colors',
               pestaniaActiva === 'captura'
-                ? 'border-b-2 -mb-px border-rose-600 text-rose-600'
+                ? 'border-b-2 -mb-px border-brand-600 text-brand-600'
                 : 'border-b-2 -mb-px border-transparent text-slate-500 hover:text-slate-700',
             ].join(' ')}
           >
@@ -65,7 +65,7 @@ function CalificacionesPage() {
             className={[
               'px-4 py-2 text-sm font-medium transition-colors',
               pestaniaActiva === 'leaderboard'
-                ? 'border-b-2 -mb-px border-rose-600 text-rose-600'
+                ? 'border-b-2 -mb-px border-brand-600 text-brand-600'
                 : 'border-b-2 -mb-px border-transparent text-slate-500 hover:text-slate-700',
             ].join(' ')}
           >
@@ -77,7 +77,7 @@ function CalificacionesPage() {
       {/* Contenido: spinner mientras carga el hook, luego la pestaña activa */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
-          <div className="w-6 h-6 border-4 border-rose-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : pestaniaActiva === 'captura' ? (
         <MatrizCalificaciones
