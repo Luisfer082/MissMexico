@@ -27,6 +27,8 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
   // Mapa principal keyed por challenge_scores.id
   const [scores, setScores] = useState<Map<string, ScoreEntry>>(new Map())
   const [loading, setLoading] = useState(true)
+  // Estado del canal realtime: alimenta el indicador "En vivo" de la UI
+  const [realtimeConectado, setRealtimeConectado] = useState(false)
 
   // Ref para que updateScore siempre acceda al Map actual sin recrearse en cada cambio de scores
   const scoresRef = useRef<Map<string, ScoreEntry>>(scores)
@@ -210,11 +212,16 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
     const canal = supabase
       .channel(`challenge_scores:${edicionId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'challenge_scores' }, handler)
-      .subscribe()
+      .subscribe((status) => {
+        // SUBSCRIBED es el único estado "conectado"; cualquier otro
+        // (CHANNEL_ERROR, TIMED_OUT, CLOSED) apaga el indicador.
+        setRealtimeConectado(status === 'SUBSCRIBED')
+      })
 
     // Cleanup obligatorio: remueve el canal al desmontar o cuando cambien deps.
     // Evita canales colgados y suscripciones duplicadas en re-renders.
     return () => {
+      setRealtimeConectado(false)
       void supabase.removeChannel(canal)
     }
     // challengeIdsKey cambia cuando los retos cambian; challengeIdsSetRef es un ref,
@@ -266,5 +273,5 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
     // apunta al Map actual sin causar recreaciones del callback.
   )
 
-  return { participantes, retos, getScore, leaderboard, loading, updateScore }
+  return { participantes, retos, getScore, leaderboard, loading, updateScore, realtimeConectado }
 }

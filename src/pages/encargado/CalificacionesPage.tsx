@@ -7,11 +7,70 @@ import LeaderboardPanel from '../../components/LeaderboardPanel'
 // Pestañas disponibles en la página
 type Pestania = 'captura' | 'leaderboard'
 
+// Botón de pestaña del segmented control
+function TabBoton({
+  activa,
+  onClick,
+  children,
+}: {
+  activa: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={[
+        'px-4 py-1.5 rounded-md text-sm font-medium cursor-pointer',
+        'transition-colors duration-150',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500',
+        activa
+          ? 'bg-white text-slate-900 shadow-sm'
+          : 'text-slate-500 hover:text-slate-700',
+      ].join(' ')}
+    >
+      {children}
+    </button>
+  )
+}
+
+// Indicador de conexión realtime: punto pulsante cuando el canal está suscrito
+function BadgeEnVivo({ conectado }: { conectado: boolean }) {
+  return (
+    <span
+      className={[
+        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+        conectado ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-slate-500',
+      ].join(' ')}
+    >
+      <span className="relative flex w-2 h-2">
+        {conectado && (
+          <span className="absolute inline-flex w-full h-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+        )}
+        <span
+          className={[
+            'relative inline-flex w-2 h-2 rounded-full',
+            conectado ? 'bg-emerald-500' : 'bg-gray-400',
+          ].join(' ')}
+        />
+      </span>
+      {conectado ? 'En vivo' : 'Conectando…'}
+    </span>
+  )
+}
+
 function CalificacionesPage() {
   // Siempre en el tope — nunca condicional
   const { edicion, loading: loadingEdicion } = useEdicionActiva()
-  const { participantes, retos, getScore, leaderboard, loading, updateScore } =
-    useCalificaciones(edicion?.id)
+  const {
+    participantes,
+    retos,
+    getScore,
+    leaderboard,
+    loading,
+    updateScore,
+    realtimeConectado,
+  } = useCalificaciones(edicion?.id)
 
   const [pestaniaActiva, setPestaniaActiva] = useState<Pestania>('captura')
 
@@ -39,39 +98,30 @@ function CalificacionesPage() {
   return (
     <div>
       {/* Encabezado */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Calificaciones</h1>
-        <p className="text-slate-500 text-sm mt-1">
-          {edicion.name} — {participantes.length} participantes · {retos.length} retos
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Calificaciones</h1>
+          <p className="text-slate-500 text-sm mt-1">
+            {edicion.name} — {participantes.length} participantes · {retos.length} retos
+          </p>
+        </div>
+        <BadgeEnVivo conectado={realtimeConectado} />
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="flex gap-0">
-          <button
-            onClick={() => setPestaniaActiva('captura')}
-            className={[
-              'px-4 py-2 text-sm font-medium transition-colors',
-              pestaniaActiva === 'captura'
-                ? 'border-b-2 -mb-px border-brand-600 text-brand-600'
-                : 'border-b-2 -mb-px border-transparent text-slate-500 hover:text-slate-700',
-            ].join(' ')}
-          >
-            Captura
-          </button>
-          <button
-            onClick={() => setPestaniaActiva('leaderboard')}
-            className={[
-              'px-4 py-2 text-sm font-medium transition-colors',
-              pestaniaActiva === 'leaderboard'
-                ? 'border-b-2 -mb-px border-brand-600 text-brand-600'
-                : 'border-b-2 -mb-px border-transparent text-slate-500 hover:text-slate-700',
-            ].join(' ')}
-          >
-            Leaderboard
-          </button>
-        </nav>
+      {/* Tabs — segmented control */}
+      <div className="inline-flex gap-1 rounded-lg bg-gray-100 p-1 mb-6">
+        <TabBoton
+          activa={pestaniaActiva === 'captura'}
+          onClick={() => setPestaniaActiva('captura')}
+        >
+          Captura
+        </TabBoton>
+        <TabBoton
+          activa={pestaniaActiva === 'leaderboard'}
+          onClick={() => setPestaniaActiva('leaderboard')}
+        >
+          Leaderboard
+        </TabBoton>
       </div>
 
       {/* Contenido: spinner mientras carga el hook, luego la pestaña activa */}

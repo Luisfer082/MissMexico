@@ -36,4 +36,6 @@ export interface UseCalificacionesResult {
   leaderboard: LeaderboardRow[]
   loading: boolean
   updateScore: (scoreId: string, value: number) => Promise<void>
+  // true mientras el canal realtime está suscrito (indicador "En vivo" en UI)
+  realtimeConectado: boolean
 }
