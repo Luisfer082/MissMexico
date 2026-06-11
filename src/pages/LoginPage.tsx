@@ -43,36 +43,42 @@ function LoginPage() {
 
     setSubmitting(true)
 
-    await toast.promise(
-      (async () => {
-        await signIn(email, password)
+    try {
+      await toast.promise(
+        (async () => {
+          await signIn(email, password)
 
-        // Cargar el perfil actualizado desde el store (ya actualizado por onAuthStateChange)
-        // Necesitamos leer el profile después del signIn
-        // Pequeña espera para que el listener de auth procese el estado
-        await new Promise<void>((resolve) => setTimeout(resolve, 300))
+          // Cargar el perfil actualizado desde el store (ya actualizado por onAuthStateChange)
+          // Necesitamos leer el profile después del signIn
+          // Pequeña espera para que el listener de auth procese el estado
+          await new Promise<void>((resolve) => setTimeout(resolve, 300))
 
-        // Leer el profile del store después del login
-        const currentProfile = useAppStore.getState().profile
+          // Leer el profile del store después del login
+          const currentProfile = useAppStore.getState().profile
 
-        if (!currentProfile?.role) {
-          throw new Error('Usuario sin rol asignado')
+          if (!currentProfile?.role) {
+            throw new Error('Usuario sin rol asignado')
+          }
+
+          const destino = ROLE_ROUTES[currentProfile.role]
+          navigate(destino)
+        })(),
+        {
+          loading: 'Iniciando sesión...',
+          success: 'Sesión iniciada',
+          error: (err: unknown) => {
+            if (err instanceof Error) return err.message
+            return 'Error al iniciar sesión'
+          },
         }
-
-        const destino = ROLE_ROUTES[currentProfile.role]
-        navigate(destino)
-      })(),
-      {
-        loading: 'Iniciando sesión...',
-        success: 'Sesión iniciada',
-        error: (err: unknown) => {
-          if (err instanceof Error) return err.message
-          return 'Error al iniciar sesión'
-        },
-      }
-    )
-
-    setSubmitting(false)
+      )
+    } catch {
+      // toast.promise ya mostró el error; el catch solo evita que la excepción
+      // propague y deje el formulario bloqueado en estado "submitting".
+    } finally {
+      // Siempre re-habilitar el formulario, haya éxito o error.
+      setSubmitting(false)
+    }
   }
 
   // Si ya está autenticado y tiene perfil, redirigir
