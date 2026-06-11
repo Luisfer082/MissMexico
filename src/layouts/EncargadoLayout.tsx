@@ -14,15 +14,23 @@ function NavItem({ to, icon, label }: NavItemProps) {
       to={to}
       end={to === '/encargado'}
       className={({ isActive }) =>
-        `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+        `relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${
           isActive
-            ? 'bg-brand-600 text-white'
-            : 'text-slate-300 hover:bg-slate-700 hover:text-white'
+            ? 'bg-slate-800 text-white'
+            : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
         }`
       }
     >
-      <span className="w-5 h-5 flex-shrink-0">{icon}</span>
-      {label}
+      {({ isActive }) => (
+        <>
+          {/* Barra indicadora de marca en el item activo */}
+          {isActive && (
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-brand-500" />
+          )}
+          <span className="w-5 h-5 flex-shrink-0">{icon}</span>
+          {label}
+        </>
+      )}
     </NavLink>
   )
 }
@@ -91,8 +99,12 @@ function EncargadoLayout() {
         {/* Logo */}
         <div className="px-4 py-5 border-b border-slate-700">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-sm font-bold">M</span>
+            <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-brand-700 rounded-lg flex items-center justify-center flex-shrink-0">
+              {/* Corona: identidad del certamen */}
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round"
+                  d="M5 16L3 7l5.5 4L12 5l3.5 6L21 7l-2 9H5zm0 0h14v2a1 1 0 01-1 1H6a1 1 0 01-1-1v-2z" />
+              </svg>
             </div>
             <div>
               <p className="text-white text-sm font-semibold leading-tight">Miss México</p>

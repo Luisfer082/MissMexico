@@ -12,6 +12,11 @@
     @apply tabular-nums;
   }
 
+  /* Tailwind v3 no pone cursor pointer en botones; lo hacemos global */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
   /* Ocultar los spinners nativos de input[type=number]: en la matriz de
      captura estorban y desalinean el texto centrado */
   input[type='number']::-webkit-outer-spin-button,

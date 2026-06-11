@@ -89,19 +89,23 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-b from-brand-50 via-gray-50 to-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Encabezado */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-600 rounded-full mb-4">
-            <span className="text-white text-2xl font-bold">M</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-brand-500 to-brand-700 rounded-full mb-4 shadow-lg shadow-brand-200">
+            {/* Corona: identidad del certamen */}
+            <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+              <path strokeLinecap="round" strokeLinejoin="round"
+                d="M5 16L3 7l5.5 4L12 5l3.5 6L21 7l-2 9H5zm0 0h14v2a1 1 0 01-1 1H6a1 1 0 01-1-1v-2z" />
+            </svg>
           </div>
           <h1 className="text-3xl font-bold text-slate-900">Miss México</h1>
           <p className="mt-1 text-sm text-slate-500">Sistema de Calificaciones en Vivo</p>
         </div>
 
         {/* Card del formulario */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-white rounded-2xl shadow-card border border-gray-200 p-8">
           <h2 className="text-lg font-semibold text-slate-800 mb-6">Iniciar sesión</h2>
 
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
