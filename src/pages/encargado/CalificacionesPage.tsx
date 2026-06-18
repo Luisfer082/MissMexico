@@ -68,6 +68,7 @@ function CalificacionesPage() {
     getScore,
     leaderboard,
     loading,
+    error,
     updateScore,
     realtimeConectado,
   } = useCalificaciones(edicion?.id)
@@ -124,10 +125,15 @@ function CalificacionesPage() {
         </TabBoton>
       </div>
 
-      {/* Contenido: spinner mientras carga el hook, luego la pestaña activa */}
+      {/* Contenido: spinner mientras carga, error si falló, luego la pestaña activa */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <div className="w-6 h-6 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-red-600 font-medium">Error al cargar las calificaciones</p>
+          <p className="text-slate-500 text-sm mt-1">{error}</p>
         </div>
       ) : pestaniaActiva === 'captura' ? (
         <MatrizCalificaciones

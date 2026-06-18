@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
+import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
 import { useAppStore } from '../stores/useAppStore'
 import { computeLeaderboard } from '../utils/leaderboard'
@@ -27,6 +28,9 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
   // Mapa principal keyed por challenge_scores.id
   const [scores, setScores] = useState<Map<string, ScoreEntry>>(new Map())
   const [loading, setLoading] = useState(true)
+  // Mensaje de error de la carga inicial; null cuando la carga fue exitosa.
+  // El consumidor lo usa para mostrar un estado de error en vez de matriz vacía.
+  const [error, setError] = useState<string | null>(null)
   // Estado del canal realtime: alimenta el indicador "En vivo" de la UI
   const [realtimeConectado, setRealtimeConectado] = useState(false)
 
@@ -52,7 +56,11 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
         return
       }
 
-      if (!cancelado) setLoading(true)
+      if (!cancelado) {
+        setLoading(true)
+        // Limpiar error de un intento previo antes de recargar
+        setError(null)
+      }
 
       try {
         // 1. Participantes de la edición
@@ -105,9 +113,12 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
           setLoading(false)
         }
       } catch {
-        // Error de Supabase: el componente consumidor usa toast.error si lo necesita.
+        // Error de Supabase (rechazo de RLS, red caída, etc.). Sin esto la matriz
+        // quedaría vacía sin avisar. Exponemos el error y notificamos con toast.
         // Dejamos loading en false para no bloquear la UI indefinidamente.
         if (!cancelado) {
+          setError('No se pudieron cargar las calificaciones. Revisa tu conexión e intenta de nuevo.')
+          toast.error('No se pudieron cargar las calificaciones')
           setLoading(false)
         }
       }
@@ -273,5 +284,5 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
     // apunta al Map actual sin causar recreaciones del callback.
   )
 
-  return { participantes, retos, getScore, leaderboard, loading, updateScore, realtimeConectado }
+  return { participantes, retos, getScore, leaderboard, loading, error, updateScore, realtimeConectado }
 }

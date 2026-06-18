@@ -35,6 +35,8 @@ export interface UseCalificacionesResult {
   getScore: (participantId: string, challengeId: string) => ScoreEntry | undefined
   leaderboard: LeaderboardRow[]
   loading: boolean
+  // Mensaje de error de la carga inicial; null si cargó bien
+  error: string | null
   updateScore: (scoreId: string, value: number) => Promise<void>
   // true mientras el canal realtime está suscrito (indicador "En vivo" en UI)
   realtimeConectado: boolean
