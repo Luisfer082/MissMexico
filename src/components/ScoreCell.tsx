@@ -37,6 +37,14 @@ function ScoreCell({ scoreId, value, onSave, onFocusChange }: Props) {
   }, [estado])
 
   const handleGuardar = async () => {
+    // Input vacío: Number('') = 0, lo que guardaría un 0 silencioso. Revertir
+    // al valor confirmado y salir sin guardar.
+    if (texto.trim() === '') {
+      setTexto(String(value))
+      setEstado('idle')
+      return
+    }
+
     const n = Number(texto)
 
     // Sin cambio respecto al valor original: normalizar texto y salir
