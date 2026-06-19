@@ -173,8 +173,106 @@ export type Database = {
         }
         Relationships: []
       }
+      judge_round_challenges: {
+        Row: {
+          challenge_id: string
+          created_at: string
+          id: string
+          round_id: string
+        }
+        Insert: {
+          challenge_id: string
+          created_at?: string
+          id?: string
+          round_id: string
+        }
+        Update: {
+          challenge_id?: string
+          created_at?: string
+          id?: string
+          round_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "judge_round_challenges_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "judge_round_challenges_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "judge_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      judge_round_judges: {
+        Row: {
+          created_at: string
+          id: string
+          judge_id: string
+          round_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          judge_id: string
+          round_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          judge_id?: string
+          round_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "judge_round_judges_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "judge_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      judge_rounds: {
+        Row: {
+          closed_at: string | null
+          created_at: string
+          id: string
+          stage_id: string
+          status: string
+        }
+        Insert: {
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          stage_id: string
+          status?: string
+        }
+        Update: {
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          stage_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "judge_rounds_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       judge_scores: {
         Row: {
+          challenge_id: string
           id: string
           judge_id: string
           participant_id: string
@@ -183,6 +281,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          challenge_id: string
           id?: string
           judge_id: string
           participant_id: string
@@ -191,6 +290,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          challenge_id?: string
           id?: string
           judge_id?: string
           participant_id?: string
@@ -199,6 +299,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "judge_scores_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "challenges"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "judge_scores_participant_id_fkey"
             columns: ["participant_id"]
