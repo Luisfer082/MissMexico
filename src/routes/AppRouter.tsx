@@ -9,7 +9,9 @@ import ParticipantesPage from '../pages/encargado/ParticipantesPage'
 import EtapasPage from '../pages/encargado/EtapasPage'
 import RetosPage from '../pages/encargado/RetosPage'
 import CalificacionesPage from '../pages/encargado/CalificacionesPage'
-import JuezPlaceholder from '../pages/juez/JuezPlaceholder'
+import RondasJuecesPage from '../pages/encargado/RondasJuecesPage'
+import JuezLayout from '../layouts/JuezLayout'
+import CalificarPage from '../pages/juez/CalificarPage'
 import DirectorPlaceholder from '../pages/director/DirectorPlaceholder'
 import AnunciadorPlaceholder from '../pages/anunciador/AnunciadorPlaceholder'
 
@@ -36,17 +38,20 @@ function AppRouter() {
           <Route path="etapas" element={<EtapasPage />} />
           <Route path="retos" element={<RetosPage />} />
           <Route path="calificaciones" element={<CalificacionesPage />} />
+          <Route path="rondas-jueces" element={<RondasJuecesPage />} />
         </Route>
 
         {/* Juez — Fase 5 */}
         <Route
-          path="/juez/*"
+          path="/juez"
           element={
             <RequireRole roles={['juez']}>
-              <JuezPlaceholder />
+              <JuezLayout />
             </RequireRole>
           }
-        />
+        >
+          <Route index element={<CalificarPage />} />
+        </Route>
 
         {/* Director — Fase 6 */}
         <Route

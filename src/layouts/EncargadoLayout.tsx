@@ -78,6 +78,13 @@ const IcosCalificaciones = (
   </svg>
 )
 
+const IcosJueces = (
+  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+    <path strokeLinecap="round" strokeLinejoin="round"
+      d="M3 6l9-4 9 4M4 10h16M4 10v8a1 1 0 001 1h14a1 1 0 001-1v-8M9 14v3m6-3v3" />
+  </svg>
+)
+
 function EncargadoLayout() {
   const navigate = useNavigate()
   const profile = useAppStore((s) => s.profile)
@@ -121,6 +128,7 @@ function EncargadoLayout() {
           <NavItem to="/encargado/etapas" icon={IcosEtapas} label="Etapas" />
           <NavItem to="/encargado/retos" icon={IcosRetos} label="Retos" />
           <NavItem to="/encargado/calificaciones" icon={IcosCalificaciones} label="Calificaciones" />
+          <NavItem to="/encargado/rondas-jueces" icon={IcosJueces} label="Rondas de jueces" />
         </nav>
 
         {/* Footer del sidebar: usuario y cerrar sesión */}
