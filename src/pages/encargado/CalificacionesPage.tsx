@@ -3,9 +3,10 @@ import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import { useCalificaciones } from '../../hooks/useCalificaciones'
 import MatrizCalificaciones from '../../components/MatrizCalificaciones'
 import LeaderboardPanel from '../../components/LeaderboardPanel'
+import PuntosJueces from '../../components/PuntosJueces'
 
 // Pestañas disponibles en la página
-type Pestania = 'captura' | 'leaderboard'
+type Pestania = 'captura' | 'leaderboard' | 'jueces'
 
 // Botón de pestaña del segmented control
 function TabBoton({
@@ -123,6 +124,12 @@ function CalificacionesPage() {
         >
           Leaderboard
         </TabBoton>
+        <TabBoton
+          activa={pestaniaActiva === 'jueces'}
+          onClick={() => setPestaniaActiva('jueces')}
+        >
+          Puntos jueces
+        </TabBoton>
       </div>
 
       {/* Contenido: spinner mientras carga, error si falló, luego la pestaña activa */}
@@ -142,8 +149,10 @@ function CalificacionesPage() {
           getScore={getScore}
           onSaveScore={updateScore}
         />
-      ) : (
+      ) : pestaniaActiva === 'leaderboard' ? (
         <LeaderboardPanel rows={leaderboard} />
+      ) : (
+        <PuntosJueces edicionId={edicion.id} />
       )}
     </div>
   )
