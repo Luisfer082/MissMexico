@@ -8,7 +8,7 @@ import type { RondaResumen } from '../../hooks/useRondasJueces'
 
 function RondasJuecesPage() {
   const { edicion, loading: loadingEdicion } = useEdicionActiva()
-  const { etapas, retos, jueces, rondas, loading, error, crearRonda, editarRonda, cerrarRonda } =
+  const { etapas, retos, jueces, rondas, loading, error, crearRonda, editarRonda, cerrarRonda, eliminarRonda } =
     useRondasJueces(edicion?.id)
 
   // Selección del formulario (nueva ronda o edición)
@@ -23,11 +23,27 @@ function RondasJuecesPage() {
   // Ronda pendiente de cerrar (null = sin confirmación abierta)
   const [rondaACerrar, setRondaACerrar] = useState<RondaResumen | null>(null)
 
+  // Ronda pendiente de eliminar (null = sin confirmación abierta)
+  const [rondaAEliminar, setRondaAEliminar] = useState<RondaResumen | null>(null)
+
   // Etapas que ya tienen ronda, excluyendo la ronda que se está editando para
   // que su propia etapa siga seleccionable durante la edición.
   const etapasConRonda = useMemo(
     () => new Set(rondas.filter((r) => r.id !== rondaEditando?.id).map((r) => r.stage_id)),
     [rondas, rondaEditando],
+  )
+
+  // Orden de la lista: las rondas cuya ETAPA está cerrada bajan al fondo; las de
+  // etapa abierta quedan arriba. Array.sort es estable, así que dentro de cada
+  // grupo se respeta el orden original (created_at desc del hook).
+  const rondasOrdenadas = useMemo(
+    () =>
+      [...rondas].sort((a, b) => {
+        const aCerrada = a.stageStatus === 'cerrada' ? 1 : 0
+        const bCerrada = b.stageStatus === 'cerrada' ? 1 : 0
+        return aCerrada - bCerrada
+      }),
+    [rondas],
   )
 
   // Guarda de habilitación del botón (la validación formal la hace el schema).
@@ -125,6 +141,22 @@ function RondasJuecesPage() {
       loading: 'Cerrando ronda...',
       success: 'Ronda cerrada',
       error: (err: unknown) => (err instanceof Error ? err.message : 'Error al cerrar la ronda'),
+    })
+  }
+
+  const handleConfirmarEliminar = async () => {
+    if (!rondaAEliminar) return
+    const ronda = rondaAEliminar
+    setRondaAEliminar(null)
+    // Si se está editando la ronda que se elimina, salir del modo edición.
+    if (rondaEditando?.id === ronda.id) {
+      setRondaEditando(null)
+      resetForm()
+    }
+    await toast.promise(eliminarRonda(ronda.id), {
+      loading: 'Eliminando ronda...',
+      success: 'Ronda eliminada',
+      error: (err: unknown) => (err instanceof Error ? err.message : 'Error al eliminar la ronda'),
     })
   }
 
@@ -286,8 +318,9 @@ function RondasJuecesPage() {
               <p className="text-sm text-slate-400">Aún no hay rondas. Crea la primera a la izquierda.</p>
             ) : (
               <ul className="space-y-3">
-                {rondas.map((r) => {
+                {rondasOrdenadas.map((r) => {
                   const cerrada = r.status === 'cerrada'
+                  const etapaCerrada = r.stageStatus === 'cerrada'
                   const esLaQueSeEdita = rondaEditando?.id === r.id
                   return (
                     <li
@@ -305,47 +338,74 @@ function RondasJuecesPage() {
                             {r.numRetos} {r.numRetos === 1 ? 'reto' : 'retos'} · {r.numJueces} {r.numJueces === 1 ? 'juez' : 'jueces'}
                           </p>
                         </div>
-                        {cerrada ? (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-200 text-slate-600">
-                            Cerrada
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                            Abierta
-                          </span>
-                        )}
-                      </div>
-                      {/* Acciones: solo disponibles en rondas abiertas */}
-                      {!cerrada && (
-                        <div className="flex gap-2 mt-3">
-                          {esLaQueSeEdita ? (
-                            <button
-                              type="button"
-                              onClick={handleCancelarEdicion}
-                              className="px-3 py-1.5 text-xs font-medium text-slate-600 border border-gray-300
-                                hover:bg-gray-50 rounded-md transition-colors"
-                            >
-                              Cancelar
-                            </button>
+                        {/* Dos badges: estado de la ronda y estado de la etapa dueña */}
+                        <div className="flex flex-col items-end gap-1.5 shrink-0">
+                          {cerrada ? (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-200 text-slate-600">
+                              Ronda cerrada
+                            </span>
                           ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                              <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                              Ronda abierta
+                            </span>
+                          )}
+                          {etapaCerrada ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-700">
+                              Etapa cerrada
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500">
+                              Etapa abierta
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      {/* Acciones. Editar/Cerrar dependen del estado de la RONDA;
+                          Eliminar depende del estado de la ETAPA (regla 7: etapa
+                          cerrada congela el snapshot y no se puede borrar). */}
+                      {(!cerrada || !etapaCerrada) && (
+                        <div className="flex gap-2 mt-3">
+                          {!cerrada &&
+                            (esLaQueSeEdita ? (
+                              <button
+                                type="button"
+                                onClick={handleCancelarEdicion}
+                                className="px-3 py-1.5 text-xs font-medium text-slate-600 border border-gray-300
+                                  hover:bg-gray-50 rounded-md transition-colors"
+                              >
+                                Cancelar
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleIniciarEdicion(r)}
+                                className="px-3 py-1.5 text-xs font-medium text-brand-600 border border-brand-200
+                                  hover:bg-brand-50 rounded-md transition-colors"
+                              >
+                                Editar ronda
+                              </button>
+                            ))}
+                          {!cerrada && (
                             <button
                               type="button"
-                              onClick={() => handleIniciarEdicion(r)}
-                              className="px-3 py-1.5 text-xs font-medium text-brand-600 border border-brand-200
-                                hover:bg-brand-50 rounded-md transition-colors"
+                              onClick={() => setRondaACerrar(r)}
+                              className="px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200
+                                hover:bg-red-50 rounded-md transition-colors"
                             >
-                              Editar ronda
+                              Cerrar ronda
                             </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => setRondaACerrar(r)}
-                            className="px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200
-                              hover:bg-red-50 rounded-md transition-colors"
-                          >
-                            Cerrar ronda
-                          </button>
+                          {!etapaCerrada && (
+                            <button
+                              type="button"
+                              onClick={() => setRondaAEliminar(r)}
+                              className="px-3 py-1.5 text-xs font-medium text-red-700 border border-red-300
+                                hover:bg-red-100 rounded-md transition-colors"
+                            >
+                              Eliminar ronda
+                            </button>
+                          )}
                         </div>
                       )}
                     </li>
@@ -366,6 +426,18 @@ function RondasJuecesPage() {
           peligro
           onConfirmar={() => void handleConfirmarCerrar()}
           onCancelar={() => setRondaACerrar(null)}
+        />
+      )}
+
+      {/* Confirmación de eliminación de ronda */}
+      {rondaAEliminar && (
+        <ConfirmDialog
+          titulo="Eliminar ronda de jueces"
+          mensaje={`¿Eliminar la ronda de "${rondaAEliminar.stageName}"? Se borrarán su configuración de retos y jueces. Esta acción no se puede deshacer.`}
+          textoConfirmar="Sí, eliminar ronda"
+          peligro
+          onConfirmar={() => void handleConfirmarEliminar()}
+          onCancelar={() => setRondaAEliminar(null)}
         />
       )}
     </div>

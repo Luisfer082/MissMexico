@@ -31,6 +31,9 @@ export interface RondaResumen {
   stage_id: string
   stageName: string
   status: string
+  // Estado de la ETAPA dueña de la ronda (independiente del status de la ronda).
+  // Gobierna si se puede eliminar la ronda: etapa cerrada (regla 7) → no.
+  stageStatus: string
   closed_at: string | null
   numRetos: number
   numJueces: number
@@ -48,6 +51,7 @@ export interface UseRondasJuecesResult {
   crearRonda: (data: RondaJuezFormData) => Promise<void>
   editarRonda: (roundId: string, data: RondaJuezFormData) => Promise<void>
   cerrarRonda: (roundId: string) => Promise<void>
+  eliminarRonda: (roundId: string) => Promise<void>
 }
 
 export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesResult {
@@ -127,7 +131,7 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
 
         const { data: rondasData, error: rondasError } = await supabase
           .from('judge_rounds')
-          .select('id, stage_id, status, closed_at, stages(name)')
+          .select('id, stage_id, status, closed_at, stages(name, status)')
           .in('stage_id', stageIds)
           .order('created_at', { ascending: false })
         if (cancelado) return
@@ -173,6 +177,7 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
           // stages es la relación; Supabase la tipa como objeto (o null) en to-one
           stageName: r.stages?.name ?? '—',
           status: r.status,
+          stageStatus: r.stages?.status ?? 'abierta',
           closed_at: r.closed_at,
           numRetos: conteoRetos.get(r.id) ?? 0,
           numJueces: conteoJueces.get(r.id) ?? 0,
@@ -309,5 +314,19 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
     setRecargar((n) => n + 1)
   }, [])
 
-  return { etapas, retos, jueces, rondas, loading, error, crearRonda, editarRonda, cerrarRonda }
+  // ─── Eliminar ronda ──────────────────────────────────────────────────────
+  // Borra la ronda; el cascade limpia sus retos y jueces (judge_round_*).
+  // Solo se ofrece desde la UI mientras la ETAPA sigue abierta: con la etapa
+  // cerrada el snapshot ya está grabado (regla 7) y no debe tocarse. Los
+  // judge_scores no referencian round_id, así que no los arrastra el cascade.
+  const eliminarRonda = useCallback(async (roundId: string): Promise<void> => {
+    const { error: eliminarError } = await supabase
+      .from('judge_rounds')
+      .delete()
+      .eq('id', roundId)
+    if (eliminarError) throw eliminarError
+    setRecargar((n) => n + 1)
+  }, [])
+
+  return { etapas, retos, jueces, rondas, loading, error, crearRonda, editarRonda, cerrarRonda, eliminarRonda }
 }
