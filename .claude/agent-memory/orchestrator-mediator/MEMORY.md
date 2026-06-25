@@ -1,0 +1,6 @@
+- [ui-designer behavior](agent_ui-designer-behavior.md) — clean visual work, but leaks into .claude tooling config; always git status for a 3rd file
+- [voltagent database-administrator behavior](agent_voltagent-database-administrator.md) — strong on Postgres RLS/triggers; assumes table cardinality without reading FKs — verify before elevating its CRITICALs
+- [judge vs challenge_scores visibility](project_judge_challenge_scores_visibility.md) — OPEN product question: should jueces read challenge_scores (bias)? awaiting Luis, don't re-escalate
+- [round-close doble confirmación](project_round_close_double_confirm.md) — RESUELTA: solo cierre de ETAPA es irreversible; rondas se editan/cierran normal. No re-escalar
+- [voltagent rondas collision + lint](agent_voltagent-rondas-collision.md) — RondasJuecesPage+useRondasJueces = punto de colisión, serializar; voltagent salta lint salvo que se exija
+- [voltagent fullstack-developer as reviewer](agent_voltagent-fullstack-developer.md) — accurate in-scope reviewer w/ tight guardrails; spot-check its DB "CUMPLE" claims vs migrations
