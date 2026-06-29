@@ -25,6 +25,14 @@ export interface JuezOpcion {
   full_name: string | null
 }
 
+export interface ParticipanteOpcion {
+  id: string
+  full_name: string
+  sash_number: number
+  region: string
+  photo_url: string | null
+}
+
 // Resumen de una ronda ya creada, para listarla en la página.
 export interface RondaResumen {
   id: string
@@ -37,14 +45,18 @@ export interface RondaResumen {
   closed_at: string | null
   numRetos: number
   numJueces: number
+  // Participantes de la ronda = stage_participants de su etapa (1:1 etapa↔ronda).
+  numParticipantes: number
   challengeIds: string[]
   judgeIds: string[]
+  participantIds: string[]
 }
 
 export interface UseRondasJuecesResult {
   etapas: EtapaOpcion[]
   retos: RetoOpcion[]
   jueces: JuezOpcion[]
+  participantes: ParticipanteOpcion[]
   rondas: RondaResumen[]
   loading: boolean
   error: string | null
@@ -52,12 +64,15 @@ export interface UseRondasJuecesResult {
   editarRonda: (roundId: string, data: RondaJuezFormData) => Promise<void>
   cerrarRonda: (roundId: string) => Promise<void>
   eliminarRonda: (roundId: string) => Promise<void>
+  // Guarda los participantes de la etapa de una ronda (botón "+ Participantes").
+  guardarParticipantesEtapa: (stageId: string, participantIds: string[]) => Promise<void>
 }
 
 export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesResult {
   const [etapas, setEtapas] = useState<EtapaOpcion[]>([])
   const [retos, setRetos] = useState<RetoOpcion[]>([])
   const [jueces, setJueces] = useState<JuezOpcion[]>([])
+  const [participantes, setParticipantes] = useState<ParticipanteOpcion[]>([])
   const [rondas, setRondas] = useState<RondaResumen[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -74,6 +89,7 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
           setEtapas([])
           setRetos([])
           setJueces([])
+          setParticipantes([])
           setRondas([])
           setLoading(false)
         }
@@ -113,6 +129,15 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
         if (cancelado) return
         if (juecesError) throw juecesError
 
+        // 3b. Participantes de la edición (universo del selector)
+        const { data: participantesData, error: participantesError } = await supabase
+          .from('participants')
+          .select('id, full_name, sash_number, region, photo_url')
+          .eq('edition_id', edicionId)
+          .order('sash_number', { ascending: true })
+        if (cancelado) return
+        if (participantesError) throw participantesError
+
         // 4. Rondas de esta edición + nombre de etapa.
         //    judge_rounds no tiene edition_id; se filtra por los stage_ids ya
         //    cargados (cada stage pertenece a una sola edición). Si no hay
@@ -123,6 +148,7 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
             setEtapas([])
             setRetos(retosData ?? [])
             setJueces(juecesData ?? [])
+            setParticipantes(participantesData ?? [])
             setRondas([])
             setLoading(false)
           }
@@ -171,6 +197,20 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
           }
         }
 
+        // 6. Participantes por etapa (stage_participants). Como ronda↔etapa es
+        //    1:1, los participantes de la ronda son los de su stage_id.
+        const idsPorEtapaParticipantes = new Map<string, string[]>()
+        const { data: spData, error: spError } = await supabase
+          .from('stage_participants')
+          .select('stage_id, participant_id')
+          .in('stage_id', stageIds)
+        if (cancelado) return
+        if (spError) throw spError
+        for (const row of spData ?? []) {
+          const prev = idsPorEtapaParticipantes.get(row.stage_id) ?? []
+          idsPorEtapaParticipantes.set(row.stage_id, [...prev, row.participant_id])
+        }
+
         const rondasResumen: RondaResumen[] = (rondasData ?? []).map((r) => ({
           id: r.id,
           stage_id: r.stage_id,
@@ -181,14 +221,17 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
           closed_at: r.closed_at,
           numRetos: conteoRetos.get(r.id) ?? 0,
           numJueces: conteoJueces.get(r.id) ?? 0,
+          numParticipantes: (idsPorEtapaParticipantes.get(r.stage_id) ?? []).length,
           challengeIds: idsPorRondaRetos.get(r.id) ?? [],
           judgeIds: idsPorRondaJueces.get(r.id) ?? [],
+          participantIds: idsPorEtapaParticipantes.get(r.stage_id) ?? [],
         }))
 
         if (!cancelado) {
           setEtapas(etapasData ?? [])
           setRetos(retosData ?? [])
           setJueces(juecesData ?? [])
+          setParticipantes(participantesData ?? [])
           setRondas(rondasResumen)
           setLoading(false)
         }
@@ -215,6 +258,51 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
       cancelado = true
     }
   }, [edicionId, recargar])
+
+  // ─── Participantes de la etapa ──────────────────────────────────────────
+  // Diff contra stage_participants: inserta los nuevos, borra los quitados.
+  // Idempotente (la unique(stage_id, participant_id) evita duplicados). No
+  // recarga: lo usan crear/editar dentro de su propio flujo. Si la etapa está
+  // cerrada, el trigger stage_participants_no_mutation_when_closed lo rechaza.
+  const aplicarParticipantes = useCallback(
+    async (stageId: string, participantIds: string[]): Promise<void> => {
+      const { data: actualesData, error: leerError } = await supabase
+        .from('stage_participants')
+        .select('participant_id')
+        .eq('stage_id', stageId)
+      if (leerError) throw leerError
+
+      const actuales = new Set((actualesData ?? []).map((r) => r.participant_id))
+      const deseados = new Set(participantIds)
+      const aInsertar = participantIds.filter((id) => !actuales.has(id))
+      const aBorrar = [...actuales].filter((id) => !deseados.has(id))
+
+      if (aBorrar.length > 0) {
+        const { error: borrarError } = await supabase
+          .from('stage_participants')
+          .delete()
+          .eq('stage_id', stageId)
+          .in('participant_id', aBorrar)
+        if (borrarError) throw borrarError
+      }
+      if (aInsertar.length > 0) {
+        const { error: insertarError } = await supabase
+          .from('stage_participants')
+          .insert(aInsertar.map((pid) => ({ stage_id: stageId, participant_id: pid })))
+        if (insertarError) throw insertarError
+      }
+    },
+    [],
+  )
+
+  // Versión expuesta para el botón "+ Participantes" de la tarjeta: aplica y recarga.
+  const guardarParticipantesEtapa = useCallback(
+    async (stageId: string, participantIds: string[]): Promise<void> => {
+      await aplicarParticipantes(stageId, participantIds)
+      setRecargar((n) => n + 1)
+    },
+    [aplicarParticipantes],
+  )
 
   // ─── Crear ronda ──────────────────────────────────────────────────────────
   // Inserta la ronda y sus relaciones (retos + jueces). Si falla una relación,
@@ -246,6 +334,9 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
         .from('judge_round_judges')
         .insert(filasJueces)
       if (juecesError) throw juecesError
+
+      // Participantes de la etapa (dentro del try para que entren al rollback).
+      await aplicarParticipantes(data.stage_id, data.participant_ids)
     } catch (err) {
       // Rollback manual: borrar la ronda arrastra retos/jueces por cascade.
       await supabase.from('judge_rounds').delete().eq('id', ronda.id)
@@ -253,7 +344,7 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
     }
 
     setRecargar((n) => n + 1)
-  }, [])
+  }, [aplicarParticipantes])
 
   // ─── Editar ronda ─────────────────────────────────────────────────────────
   // Reemplaza la etapa, los retos y los jueces de una ronda existente.
@@ -299,8 +390,11 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
       .insert(filasJueces)
     if (insertarJuecesError) throw insertarJuecesError
 
+    // 4. Reemplazar participantes de la etapa (diff insert/delete)
+    await aplicarParticipantes(data.stage_id, data.participant_ids)
+
     setRecargar((n) => n + 1)
-  }, [])
+  }, [aplicarParticipantes])
 
   // ─── Cerrar ronda ────────────────────────────────────────────────────────
   // Cambia el status a 'cerrada'; el trigger de BD sella closed_at.
@@ -328,5 +422,18 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
     setRecargar((n) => n + 1)
   }, [])
 
-  return { etapas, retos, jueces, rondas, loading, error, crearRonda, editarRonda, cerrarRonda, eliminarRonda }
+  return {
+    etapas,
+    retos,
+    jueces,
+    participantes,
+    rondas,
+    loading,
+    error,
+    crearRonda,
+    editarRonda,
+    cerrarRonda,
+    eliminarRonda,
+    guardarParticipantesEtapa,
+  }
 }

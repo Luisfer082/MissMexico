@@ -4,18 +4,45 @@ import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import { useRondasJueces } from '../../hooks/useRondasJueces'
 import { rondaJuezSchema } from '../../schemas/rondaJuez'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import SelectorParticipantesDrawer from '../../components/SelectorParticipantesDrawer'
 import type { RondaResumen } from '../../hooks/useRondasJueces'
+
+// Tintes para los avatares del resumen, rotados por índice.
+const TINTES_AVATAR = [
+  'bg-brand-100 text-brand-700',
+  'bg-amber-100 text-amber-700',
+  'bg-emerald-100 text-emerald-700',
+  'bg-sky-100 text-sky-700',
+]
 
 function RondasJuecesPage() {
   const { edicion, loading: loadingEdicion } = useEdicionActiva()
-  const { etapas, retos, jueces, rondas, loading, error, crearRonda, editarRonda, cerrarRonda, eliminarRonda } =
-    useRondasJueces(edicion?.id)
+  const {
+    etapas,
+    retos,
+    jueces,
+    participantes,
+    rondas,
+    loading,
+    error,
+    crearRonda,
+    editarRonda,
+    cerrarRonda,
+    eliminarRonda,
+    guardarParticipantesEtapa,
+  } = useRondasJueces(edicion?.id)
 
   // Selección del formulario (nueva ronda o edición)
   const [etapaId, setEtapaId] = useState('')
   const [retosSel, setRetosSel] = useState<Set<string>>(new Set())
   const [juecesSel, setJuecesSel] = useState<Set<string>>(new Set())
+  const [participantesSel, setParticipantesSel] = useState<Set<string>>(new Set())
   const [enviando, setEnviando] = useState(false)
+
+  // Drawer de participantes. modo 'form' edita la selección del formulario;
+  // 'card' edita directo los participantes de una ronda ya existente.
+  const [drawerModo, setDrawerModo] = useState<'form' | 'card' | null>(null)
+  const [rondaParaParticipantes, setRondaParaParticipantes] = useState<RondaResumen | null>(null)
 
   // Ronda que está siendo editada (null = modo creación)
   const [rondaEditando, setRondaEditando] = useState<RondaResumen | null>(null)
@@ -48,7 +75,7 @@ function RondasJuecesPage() {
 
   // Guarda de habilitación del botón (la validación formal la hace el schema).
   const puedeEnviar =
-    etapaId !== '' && retosSel.size > 0 && juecesSel.size > 0 && !enviando
+    etapaId !== '' && retosSel.size > 0 && juecesSel.size > 0 && participantesSel.size >= 2 && !enviando
 
   const toggle = (set: Set<string>, id: string): Set<string> => {
     const siguiente = new Set(set)
@@ -61,6 +88,7 @@ function RondasJuecesPage() {
     setEtapaId('')
     setRetosSel(new Set())
     setJuecesSel(new Set())
+    setParticipantesSel(new Set())
   }
 
   // Inicia el modo edición: pre-puebla el formulario con los datos actuales de la ronda.
@@ -69,6 +97,7 @@ function RondasJuecesPage() {
     setEtapaId(ronda.stage_id)
     setRetosSel(new Set(ronda.challengeIds))
     setJuecesSel(new Set(ronda.judgeIds))
+    setParticipantesSel(new Set(ronda.participantIds))
   }
 
   const handleCancelarEdicion = () => {
@@ -81,6 +110,7 @@ function RondasJuecesPage() {
       stage_id: etapaId,
       challenge_ids: [...retosSel],
       judge_ids: [...juecesSel],
+      participant_ids: [...participantesSel],
     }
     const parsed = rondaJuezSchema.safeParse(candidato)
     if (!parsed.success) {
@@ -109,6 +139,7 @@ function RondasJuecesPage() {
       stage_id: etapaId,
       challenge_ids: [...retosSel],
       judge_ids: [...juecesSel],
+      participant_ids: [...participantesSel],
     }
     const parsed = rondaJuezSchema.safeParse(candidato)
     if (!parsed.success) {
@@ -142,6 +173,37 @@ function RondasJuecesPage() {
       success: 'Ronda cerrada',
       error: (err: unknown) => (err instanceof Error ? err.message : 'Error al cerrar la ronda'),
     })
+  }
+
+  // Participantes seleccionados en el formulario, en orden de sash_number.
+  const seleccionFormParticipantes = useMemo(
+    () => participantes.filter((p) => participantesSel.has(p.id)),
+    [participantes, participantesSel],
+  )
+
+  // Confirma la selección del drawer según el modo en que se abrió.
+  const handleConfirmarDrawer = async (ids: string[]) => {
+    if (drawerModo === 'form') {
+      setParticipantesSel(new Set(ids))
+      setDrawerModo(null)
+      return
+    }
+    if (drawerModo === 'card' && rondaParaParticipantes) {
+      const ronda = rondaParaParticipantes
+      setDrawerModo(null)
+      setRondaParaParticipantes(null)
+      await toast.promise(guardarParticipantesEtapa(ronda.stage_id, ids), {
+        loading: 'Guardando participantes...',
+        success: 'Participantes actualizados',
+        error: (err: unknown) =>
+          err instanceof Error ? err.message : 'Error al guardar los participantes',
+      })
+    }
+  }
+
+  const handleCerrarDrawer = () => {
+    setDrawerModo(null)
+    setRondaParaParticipantes(null)
   }
 
   const handleConfirmarEliminar = async () => {
@@ -271,6 +333,69 @@ function RondasJuecesPage() {
               )}
             </fieldset>
 
+            {/* Participantes en la ronda */}
+            <div className="mb-5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                  Participantes en la ronda
+                </span>
+                {seleccionFormParticipantes.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setDrawerModo('form')}
+                    className="text-xs text-brand-600 hover:text-brand-700 underline underline-offset-2 transition-colors"
+                  >
+                    Editar
+                  </button>
+                )}
+              </div>
+
+              {seleccionFormParticipantes.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setDrawerModo('form')}
+                  className="w-full py-3 px-4 text-sm font-medium text-brand-600 border border-dashed border-brand-300
+                    bg-brand-50/60 rounded-lg hover:bg-brand-50 transition-colors"
+                >
+                  + Agregar participantes
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setDrawerModo('form')}
+                  className="w-full flex items-center gap-3 py-2.5 px-3 border border-gray-200 rounded-lg
+                    hover:bg-gray-50 transition-colors text-left"
+                >
+                  <span className="flex -space-x-2 flex-shrink-0">
+                    {seleccionFormParticipantes.slice(0, 4).map((p, i) => (
+                      <span
+                        key={p.id}
+                        className={`inline-flex items-center justify-center w-[30px] h-[30px] rounded-full
+                          text-xs font-bold ring-2 ring-white ${TINTES_AVATAR[i % TINTES_AVATAR.length]}`}
+                      >
+                        {p.full_name.charAt(0).toUpperCase()}
+                      </span>
+                    ))}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-slate-900">
+                      {seleccionFormParticipantes.length} participantes
+                    </span>
+                    <span className="block text-xs text-slate-400 truncate">
+                      {(() => {
+                        const nombres = seleccionFormParticipantes.map((p) => p.full_name.split(' ')[0])
+                        const visibles = nombres.slice(0, 3).join(', ')
+                        return nombres.length > 3 ? `${visibles} +${nombres.length - 3}` : visibles
+                      })()}
+                    </span>
+                  </span>
+                  <svg className="w-4 h-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
+              )}
+            </div>
+
             {/* Jueces */}
             <fieldset className="mb-6">
               <legend className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
@@ -335,7 +460,7 @@ function RondasJuecesPage() {
                         <div>
                           <p className="font-medium text-slate-900 text-sm">{r.stageName}</p>
                           <p className="text-xs text-slate-500 mt-0.5">
-                            {r.numRetos} {r.numRetos === 1 ? 'reto' : 'retos'} · {r.numJueces} {r.numJueces === 1 ? 'juez' : 'jueces'}
+                            {r.numRetos} {r.numRetos === 1 ? 'reto' : 'retos'} · {r.numJueces} {r.numJueces === 1 ? 'juez' : 'jueces'} · {r.numParticipantes} {r.numParticipantes === 1 ? 'participante' : 'participantes'}
                           </p>
                         </div>
                         {/* Dos badges: estado de la ronda y estado de la etapa dueña */}
@@ -365,7 +490,20 @@ function RondasJuecesPage() {
                           Eliminar depende del estado de la ETAPA (regla 7: etapa
                           cerrada congela el snapshot y no se puede borrar). */}
                       {(!cerrada || !etapaCerrada) && (
-                        <div className="flex gap-2 mt-3">
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {!cerrada && !etapaCerrada && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRondaParaParticipantes(r)
+                                setDrawerModo('card')
+                              }}
+                              className="px-3 py-1.5 text-xs font-medium text-white bg-brand-600 hover:bg-brand-700
+                                rounded-md transition-colors"
+                            >
+                              + Participantes
+                            </button>
+                          )}
                           {!cerrada &&
                             (esLaQueSeEdita ? (
                               <button
@@ -438,6 +576,20 @@ function RondasJuecesPage() {
           peligro
           onConfirmar={() => void handleConfirmarEliminar()}
           onCancelar={() => setRondaAEliminar(null)}
+        />
+      )}
+
+      {/* Drawer de selección de participantes (formulario o tarjeta) */}
+      {drawerModo && (
+        <SelectorParticipantesDrawer
+          participantes={participantes}
+          seleccionInicial={
+            drawerModo === 'card'
+              ? rondaParaParticipantes?.participantIds ?? []
+              : [...participantesSel]
+          }
+          onConfirmar={(ids) => void handleConfirmarDrawer(ids)}
+          onCerrar={handleCerrarDrawer}
         />
       )}
     </div>
