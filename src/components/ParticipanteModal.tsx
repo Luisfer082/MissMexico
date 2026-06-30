@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
 import { participanteSchema } from '../schemas/participante'
+import { comprimirImagen, subirFotoParticipante } from '../utils/foto-participante'
 import type { Tables } from '../types/database'
 
 interface Props {
@@ -56,9 +57,20 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
   const [fullName, setFullName] = useState(participante?.full_name ?? '')
   const [sashNumber, setSashNumber] = useState(participante?.sash_number?.toString() ?? '')
   const [region, setRegion] = useState(participante?.region ?? '')
+  // URL ya guardada (al editar). La foto nueva vive en blobPendiente hasta el submit.
   const [photoUrl, setPhotoUrl] = useState(participante?.photo_url ?? '')
+  // Imagen comprimida pendiente de subir; null si no se eligió una nueva.
+  const [blobPendiente, setBlobPendiente] = useState<Blob | null>(null)
+  // Object URL del blob pendiente, para la vista previa local antes de subir.
+  const [previewLocal, setPreviewLocal] = useState('')
+  // true mientras se comprime la imagen recién soltada.
+  const [procesando, setProcesando] = useState(false)
+  // Resalta la zona de arrastre durante el dragover.
+  const [arrastrando, setArrastrando] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [submitting, setSubmitting] = useState(false)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Cerrar con Escape
   useEffect(() => {
@@ -68,6 +80,46 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
+
+  // Libera el object URL del preview al reemplazarlo o al desmontar (evita leaks).
+  useEffect(() => {
+    return () => {
+      if (previewLocal) URL.revokeObjectURL(previewLocal)
+    }
+  }, [previewLocal])
+
+  // Procesa un archivo elegido o arrastrado: valida, comprime y arma el preview.
+  const handleArchivo = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('El archivo debe ser una imagen')
+      return
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error('La imagen no debe pesar más de 8 MB')
+      return
+    }
+
+    setProcesando(true)
+    try {
+      const blob = await comprimirImagen(file)
+      setBlobPendiente(blob)
+      setPreviewLocal(URL.createObjectURL(blob))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo procesar la imagen')
+    } finally {
+      setProcesando(false)
+    }
+  }
+
+  // Quita la foto (nueva o existente) y vuelve a la inicial.
+  const quitarFoto = () => {
+    setBlobPendiente(null)
+    setPhotoUrl('')
+    setPreviewLocal('')
+  }
+
+  // Lo que se muestra en el preview: la foto nueva si la hay, si no la guardada.
+  const fotoMostrada = previewLocal || photoUrl
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -92,16 +144,24 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
 
     setSubmitting(true)
 
-    const datos = {
-      full_name: result.data.full_name,
-      sash_number: result.data.sash_number,
-      region: result.data.region,
-      photo_url: result.data.photo_url || null,
-      edition_id: edicionId,
-    }
-
     await toast.promise(
       (async () => {
+        // Si hay foto nueva, súbela primero y usa su URL pública. Si no, conserva
+        // la URL guardada (o null si se quitó). Va dentro del try para que un fallo
+        // de subida cancele el guardado y dispare el toast de error.
+        let urlFoto: string | null = result.data.photo_url || null
+        if (blobPendiente) {
+          urlFoto = await subirFotoParticipante(blobPendiente, edicionId)
+        }
+
+        const datos = {
+          full_name: result.data.full_name,
+          sash_number: result.data.sash_number,
+          region: result.data.region,
+          photo_url: urlFoto,
+          edition_id: edicionId,
+        }
+
         if (esEdicion) {
           const { error } = await supabase
             .from('participants')
@@ -239,33 +299,90 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
             </div>
           </div>
 
-          {/* URL de foto */}
+          {/* Foto */}
           <div>
-            <label htmlFor="photo_url" className="block text-sm font-medium text-slate-700 mb-1">
-              URL de foto{' '}
-              <span className="text-slate-400 font-normal">(opcional)</span>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Foto <span className="text-slate-400 font-normal">(opcional)</span>
             </label>
-            <input
-              id="photo_url"
-              type="url"
-              value={photoUrl}
-              onChange={(e) => setPhotoUrl(e.target.value)}
-              disabled={submitting}
-              className={`${inputBase} ${errors.photo_url ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
-              placeholder="https://..."
-            />
-            {errors.photo_url && <p className="mt-1 text-xs text-red-600">{errors.photo_url}</p>}
 
-            {/* Vista previa de la foto — solo cuando hay URL.
-                key=photoUrl fuerza remount al cambiar la URL y resetea imgError. */}
-            {photoUrl.trim() !== '' && (
-              <div className="mt-2">
-                <FotoPreview
-                  key={photoUrl.trim()}
-                  nombre={fullName || 'Participante'}
-                  photoUrl={photoUrl.trim()}
-                />
+            {/* Input de archivo oculto; lo dispara el dropzone o el botón "Cambiar".
+                Se resetea su value tras elegir para permitir reelegir el mismo archivo. */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) void handleArchivo(file)
+                e.target.value = ''
+              }}
+            />
+
+            {fotoMostrada ? (
+              /* Preview de la foto elegida/guardada + acciones */
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  {/* key fuerza remount al cambiar la imagen y resetea su imgError */}
+                  <FotoPreview
+                    key={fotoMostrada}
+                    nombre={fullName || 'Participante'}
+                    photoUrl={fotoMostrada}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={submitting || procesando}
+                    className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 text-slate-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    Cambiar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={quitarFoto}
+                    disabled={submitting || procesando}
+                    className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    Quitar
+                  </button>
+                </div>
               </div>
+            ) : (
+              /* Zona de arrastre / click para elegir */
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setArrastrando(true)
+                }}
+                onDragLeave={() => setArrastrando(false)}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setArrastrando(false)
+                  const file = e.dataTransfer.files?.[0]
+                  if (file) void handleArchivo(file)
+                }}
+                disabled={submitting || procesando}
+                className={[
+                  'w-full flex flex-col items-center justify-center gap-1 px-4 py-6 rounded-lg',
+                  'border-2 border-dashed text-center transition-colors cursor-pointer',
+                  'focus:outline-none focus:ring-2 focus:ring-brand-500',
+                  arrastrando
+                    ? 'border-brand-400 bg-brand-50'
+                    : 'border-gray-300 hover:border-brand-300 hover:bg-gray-50',
+                  procesando ? 'opacity-60 cursor-wait' : '',
+                ].join(' ')}
+              >
+                <span className="text-sm font-medium text-slate-600">
+                  {procesando ? 'Procesando imagen…' : 'Arrastra una foto o haz clic para elegir'}
+                </span>
+                <span className="text-xs text-slate-400">
+                  JPG o PNG · se comprime automáticamente
+                </span>
+              </button>
             )}
           </div>
 
