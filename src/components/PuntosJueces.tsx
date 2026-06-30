@@ -97,6 +97,8 @@ function ResumenRonda({ filas }: ResumenProps) {
 function PuntosJueces({ edicionId }: Props) {
   const { rondas, puntajes, loading, error, recargar } = usePuntosJueces(edicionId)
 
+  // Vista de los puntos: tabla cruda por juez, o resumen agregado por participante.
+  const [vista, setVista] = useState<'juez' | 'participante'>('juez')
   // '' significa "ninguna selección explícita aún": rondaEfectiva cae al primer item.
   const [rondaSeleccionada, setRondaSeleccionada] = useState<string>('')
   // 'todos' o un judge_id concreto. Si el ID ya no existe en la ronda activa,
@@ -151,6 +153,59 @@ function PuntosJueces({ edicionId }: Props) {
         : puntajesDeRonda.filter((p) => p.judge_id === juezFiltroEfectivo)
     return ordenarFilas(base)
   }, [puntajesDeRonda, juezFiltroEfectivo])
+
+  // Resumen por participante de la ronda efectiva (todos los jueces, ignora el
+  // filtro de juez). Por cada participante: puntos por reto (suma de jueces en
+  // ese reto), total de todos sus puntos y media de TODAS sus calificaciones
+  // (todos los jueces × todos los retos).
+  const resumenParticipantes = useMemo(() => {
+    // Retos presentes en la ronda, como columnas, ordenados por challenge_order.
+    const retosMap = new Map<string, { name: string; order: number }>()
+    for (const p of puntajesDeRonda) {
+      if (!retosMap.has(p.challenge_id)) {
+        retosMap.set(p.challenge_id, { name: p.challenge_name, order: p.challenge_order })
+      }
+    }
+    const retos = [...retosMap.entries()]
+      .map(([id, v]) => ({ id, name: v.name }))
+      .sort((a, b) => (retosMap.get(a.id)!.order - retosMap.get(b.id)!.order))
+
+    // Acumular por participante.
+    interface Acc {
+      participant_id: string
+      name: string
+      region: string
+      sash: number
+      porReto: Map<string, number> // challenge_id -> suma de jueces en ese reto
+      total: number
+      count: number // número de calificaciones (para la media)
+    }
+    const accMap = new Map<string, Acc>()
+    for (const p of puntajesDeRonda) {
+      let acc = accMap.get(p.participant_id)
+      if (!acc) {
+        acc = {
+          participant_id: p.participant_id,
+          name: p.participant_name,
+          region: p.participant_region,
+          sash: p.sash_number,
+          porReto: new Map(),
+          total: 0,
+          count: 0,
+        }
+        accMap.set(p.participant_id, acc)
+      }
+      acc.porReto.set(p.challenge_id, (acc.porReto.get(p.challenge_id) ?? 0) + p.score)
+      acc.total += p.score
+      acc.count += 1
+    }
+
+    const filas = [...accMap.values()]
+      .map((a) => ({ ...a, media: a.count > 0 ? a.total / a.count : 0 }))
+      .sort((a, b) => a.sash - b.sash)
+
+    return { retos, filas }
+  }, [puntajesDeRonda])
 
   // ─── Render: estados de carga y error ────────────────────────────────────
 
@@ -237,8 +292,27 @@ function PuntosJueces({ edicionId }: Props) {
       {/* Resumen de la ronda */}
       <ResumenRonda filas={puntajesDeRonda} />
 
-      {/* Filtro de juez — solo visible si hay más de un juez en la ronda */}
-      {juecesDeRonda.length > 1 && (
+      {/* Toggle de vista: por juez (crudo) vs por participante (agregado) */}
+      <div className="inline-flex gap-1 rounded-lg bg-gray-100 p-1 mb-4">
+        {([
+          { id: 'juez', label: 'Por juez' },
+          { id: 'participante', label: 'Por participante' },
+        ] as const).map((opt) => (
+          <button
+            key={opt.id}
+            onClick={() => setVista(opt.id)}
+            className={[
+              'px-4 py-1.5 rounded-md text-sm font-medium cursor-pointer transition-colors',
+              vista === opt.id ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700',
+            ].join(' ')}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Filtro de juez — solo en la vista por juez y si hay más de un juez */}
+      {vista === 'juez' && juecesDeRonda.length > 1 && (
         <div className="flex items-center gap-2 mb-4">
           <label
             htmlFor="selector-juez"
@@ -263,7 +337,8 @@ function PuntosJueces({ edicionId }: Props) {
       )}
 
       {/* Estado vacío dentro de una ronda existente */}
-      {puntajesFiltrados.length === 0 ? (
+      {vista === 'juez' ? (
+        puntajesFiltrados.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center bg-white rounded-xl border border-gray-200 shadow-card">
           <p className="text-slate-700 font-medium">Sin puntuaciones</p>
           <p className="text-slate-400 text-sm mt-1">
@@ -273,7 +348,7 @@ function PuntosJueces({ edicionId }: Props) {
           </p>
         </div>
       ) : (
-        /* Tabla de puntuaciones */
+        /* Tabla de puntuaciones por juez */
         <div className="bg-white rounded-xl border border-gray-200 shadow-card overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -335,6 +410,74 @@ function PuntosJueces({ edicionId }: Props) {
                   </tr>
                 )
               })}
+            </tbody>
+          </table>
+        </div>
+        )
+      ) : resumenParticipantes.filas.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-12 text-center bg-white rounded-xl border border-gray-200 shadow-card">
+          <p className="text-slate-700 font-medium">Sin puntuaciones</p>
+          <p className="text-slate-400 text-sm mt-1">
+            Aún no hay puntuaciones capturadas en esta ronda.
+          </p>
+        </div>
+      ) : (
+        /* Tabla resumen por participante: puntos por reto + total + media */
+        <div className="bg-white rounded-xl border border-gray-200 shadow-card overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-100">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                  #
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                  Participante
+                </th>
+                {resumenParticipantes.retos.map((r) => (
+                  <th
+                    key={r.id}
+                    className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap"
+                  >
+                    {r.name}
+                  </th>
+                ))}
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                  Total
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                  Media
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {resumenParticipantes.filas.map((fila) => (
+                <tr key={fila.participant_id} className="hover:bg-gray-50/60 transition-colors">
+                  <td className="px-4 py-2.5 text-slate-500 tabular-nums">{fila.sash}</td>
+                  <td className="px-4 py-2.5 text-slate-900 font-medium">
+                    {fila.name}
+                    <span className="block text-xs text-slate-400 font-normal truncate max-w-[10rem]">
+                      {fila.region}
+                    </span>
+                  </td>
+                  {resumenParticipantes.retos.map((r) => {
+                    const v = fila.porReto.get(r.id)
+                    return (
+                      <td
+                        key={r.id}
+                        className="px-4 py-2.5 text-right tabular-nums text-slate-700"
+                      >
+                        {v !== undefined ? formatearPuntaje(v) : <span className="text-slate-300">—</span>}
+                      </td>
+                    )
+                  })}
+                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-slate-900">
+                    {formatearPuntaje(fila.total)}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-semibold tabular-nums text-brand-700">
+                    {formatearPuntaje(fila.media)}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
