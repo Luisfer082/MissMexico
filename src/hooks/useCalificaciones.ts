@@ -19,6 +19,15 @@ import type { Tables } from '../types/database'
 
 // Tipo de fila completa de challenge_scores tal como llega de la BD / realtime.
 type ScoreRow = Tables<'challenge_scores'>
+// Tipo de fila completa de judge_scores (BD / realtime).
+type JudgeScoreRow = Tables<'judge_scores'>
+
+// Entrada mínima de judge_scores para el total combinado del leaderboard.
+interface JudgeScoreEntry {
+  id: string // judge_scores.id
+  participant_id: string
+  score: number
+}
 
 export function useCalificaciones(edicionId: string | undefined): UseCalificacionesResult {
   const user = useAppStore((s) => s.user)
@@ -27,6 +36,9 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
   const [retos, setRetos] = useState<RetoCalif[]>([])
   // Mapa principal keyed por challenge_scores.id
   const [scores, setScores] = useState<Map<string, ScoreEntry>>(new Map())
+  // Puntos de jueces (judge_scores) de la edición, keyed por judge_scores.id.
+  // Alimentan el total combinado del leaderboard junto a challenge_scores.
+  const [judgeScores, setJudgeScores] = useState<Map<string, JudgeScoreEntry>>(new Map())
   const [loading, setLoading] = useState(true)
   // Mensaje de error de la carga inicial; null cuando la carga fue exitosa.
   // El consumidor lo usa para mostrar un estado de error en vez de matriz vacía.
@@ -51,6 +63,7 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
           setParticipantes([])
           setRetos([])
           setScores(new Map())
+          setJudgeScores(new Map())
           setLoading(false)
         }
         return
@@ -106,10 +119,34 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
           }
         }
 
+        // 4. Judge scores de la edición (para el total combinado del leaderboard).
+        //    Se filtran por participant_id (cada participante pertenece a una sola
+        //    edición). RLS "judge_scores_select_admin" permite al encargado leerlos.
+        const judgeMap = new Map<string, JudgeScoreEntry>()
+        const participantIds = (partsData ?? []).map((p) => p.id)
+        if (participantIds.length > 0) {
+          const { data: judgeData, error: judgeError } = await supabase
+            .from('judge_scores')
+            .select('id, participant_id, score')
+            .in('participant_id', participantIds)
+
+          if (cancelado) return
+          if (judgeError) throw judgeError
+
+          for (const row of judgeData ?? []) {
+            judgeMap.set(row.id, {
+              id: row.id,
+              participant_id: row.participant_id,
+              score: row.score,
+            })
+          }
+        }
+
         if (!cancelado) {
           setParticipantes(partsData ?? [])
           setRetos(retosData ?? [])
           setScores(scoresMap)
+          setJudgeScores(judgeMap)
           setLoading(false)
         }
       } catch {
@@ -147,10 +184,20 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
     [scoresPorPar],
   )
 
+  // ─── Total de jueces por participante ─────────────────────────────────────
+  // Suma de judge_scores agrupada por participant_id; alimenta el leaderboard.
+  const judgeTotals = useMemo(() => {
+    const mapa = new Map<string, number>()
+    for (const entry of judgeScores.values()) {
+      mapa.set(entry.participant_id, (mapa.get(entry.participant_id) ?? 0) + entry.score)
+    }
+    return mapa
+  }, [judgeScores])
+
   // ─── Leaderboard derivado ─────────────────────────────────────────────────
   const leaderboard = useMemo<LeaderboardRow[]>(
-    () => computeLeaderboard(participantes, [...scores.values()]),
-    [participantes, scores],
+    () => computeLeaderboard(participantes, [...scores.values()], judgeTotals),
+    [participantes, scores, judgeTotals],
   )
 
   // ─── Realtime ─────────────────────────────────────────────────────────────
@@ -239,6 +286,75 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
     // no necesita estar en deps (siempre está actualizado vía su propio useEffect).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edicionId, challengeIdsKey])
+
+  // ─── Realtime de judge_scores ─────────────────────────────────────────────
+  // Mantiene el total combinado del leaderboard en vivo a medida que los jueces
+  // sincronizan. judge_scores no tiene edition_id; se filtra en cliente por el
+  // set de participant_ids de la edición.
+  const participantIdsSet = useMemo(
+    () => new Set(participantes.map((p) => p.id)),
+    [participantes],
+  )
+  const participantIdsSetRef = useRef<Set<string>>(participantIdsSet)
+  useEffect(() => {
+    participantIdsSetRef.current = participantIdsSet
+  }, [participantIdsSet])
+
+  const participantIdsKey = participantes.map((p) => p.id).join(',')
+
+  useEffect(() => {
+    if (!edicionId || participantes.length === 0) return
+
+    const handler = (payload: RealtimePostgresChangesPayload<JudgeScoreRow>) => {
+      if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+        const fila = payload.new
+        // Ignorar filas de participantes ajenos a esta edición
+        if (!participantIdsSetRef.current.has(fila.participant_id)) return
+
+        setJudgeScores((prev) => {
+          const existente = prev.get(fila.id)
+          if (
+            existente !== undefined &&
+            existente.score === fila.score &&
+            existente.participant_id === fila.participant_id
+          ) {
+            return prev
+          }
+          const siguiente = new Map(prev)
+          siguiente.set(fila.id, {
+            id: fila.id,
+            participant_id: fila.participant_id,
+            score: fila.score,
+          })
+          return siguiente
+        })
+      } else if (payload.eventType === 'DELETE') {
+        const viejo = payload.old
+        if (!viejo.id) return
+        if (viejo.participant_id && !participantIdsSetRef.current.has(viejo.participant_id)) return
+
+        const scoreId = viejo.id
+        setJudgeScores((prev) => {
+          if (!prev.has(scoreId)) return prev
+          const siguiente = new Map(prev)
+          siguiente.delete(scoreId)
+          return siguiente
+        })
+      }
+    }
+
+    const canal = supabase
+      .channel(`judge_scores:${edicionId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'judge_scores' }, handler)
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(canal)
+    }
+    // participantIdsKey cambia cuando cambian los participantes; el ref del set
+    // se mantiene actualizado por su propio effect, no va en deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edicionId, participantIdsKey])
 
   // ─── updateScore ──────────────────────────────────────────────────────────
   // Actualización optimista: modifica el Map local antes de ir a la BD.

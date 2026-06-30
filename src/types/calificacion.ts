@@ -24,8 +24,13 @@ export interface ScoreEntry {
 
 export interface LeaderboardRow {
   participant: ParticipanteCalif
-  total: number
-  promedio: number
+  // Desglose del total: puntos del encargado (challenge_scores) y de jueces
+  // (judge_scores). Se exponen por separado porque están en escalas distintas
+  // y el total combinado debe ser auditable en la UI.
+  totalEncargado: number
+  totalJueces: number
+  total: number // combinado = totalEncargado + totalJueces; es el que rankea
+  promedio: number // promedio de los puntos del encargado (challenge_scores)
   posicion: number // ranking 1-based
 }
 

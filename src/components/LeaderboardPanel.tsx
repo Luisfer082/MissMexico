@@ -44,7 +44,14 @@ function LeaderboardPanel({ rows }: Props) {
             <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">
               Participante
             </th>
-            {/* Columna total (incluye barra relativa al líder) */}
+            {/* Desglose: puntos del encargado y de jueces (escalas distintas) */}
+            <th className="w-24 px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              Encargado
+            </th>
+            <th className="w-24 px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              Jueces
+            </th>
+            {/* Columna total combinado (incluye barra relativa al líder) */}
             <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wide">
               Total
             </th>
@@ -86,7 +93,17 @@ function LeaderboardPanel({ rows }: Props) {
                   <p className="text-xs text-slate-400 truncate">{row.participant.region}</p>
                 </td>
 
-                {/* Total con barra de progreso relativa al líder */}
+                {/* Puntos del encargado (challenge_scores) */}
+                <td className="px-4 py-3 text-right text-slate-500 tabular-nums">
+                  {formatearNum(row.totalEncargado)}
+                </td>
+
+                {/* Puntos de jueces (judge_scores) */}
+                <td className="px-4 py-3 text-right text-slate-500 tabular-nums">
+                  {row.totalJueces > 0 ? formatearNum(row.totalJueces) : '—'}
+                </td>
+
+                {/* Total combinado con barra de progreso relativa al líder */}
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-3">
                     <div className="w-28 sm:w-40 h-1.5 bg-gray-100 rounded-full overflow-hidden">
