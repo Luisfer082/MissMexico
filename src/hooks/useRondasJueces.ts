@@ -398,37 +398,61 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
       .eq('id', roundId)
     if (updateError) throw updateError
 
-    // 2. Reemplazar retos: borrar existentes e insertar selección nueva
-    const { error: borrarRetosError } = await supabase
+    // 2. Retos: diff contra los actuales — insertar nuevos primero y borrar
+    //    sobrantes al final. Si algo falla a medias, la ronda conserva una
+    //    configuración utilizable en vez de quedar vacía (no hay transacción).
+    const { data: retosActuales, error: leerRetosError } = await supabase
       .from('judge_round_challenges')
-      .delete()
+      .select('challenge_id')
       .eq('round_id', roundId)
-    if (borrarRetosError) throw borrarRetosError
+    if (leerRetosError) throw leerRetosError
 
-    const filasRetos = data.challenge_ids.map((cid) => ({
-      round_id: roundId,
-      challenge_id: cid,
-    }))
-    const { error: insertarRetosError } = await supabase
-      .from('judge_round_challenges')
-      .insert(filasRetos)
-    if (insertarRetosError) throw insertarRetosError
+    const retosPrevios = new Set((retosActuales ?? []).map((r) => r.challenge_id))
+    const retosDeseados = new Set(data.challenge_ids)
+    const retosAInsertar = data.challenge_ids.filter((id) => !retosPrevios.has(id))
+    const retosABorrar = [...retosPrevios].filter((id) => !retosDeseados.has(id))
 
-    // 3. Reemplazar jueces: borrar existentes e insertar selección nueva
-    const { error: borrarJuecesError } = await supabase
+    if (retosAInsertar.length > 0) {
+      const { error: insertarRetosError } = await supabase
+        .from('judge_round_challenges')
+        .insert(retosAInsertar.map((cid) => ({ round_id: roundId, challenge_id: cid })))
+      if (insertarRetosError) throw insertarRetosError
+    }
+    if (retosABorrar.length > 0) {
+      const { error: borrarRetosError } = await supabase
+        .from('judge_round_challenges')
+        .delete()
+        .eq('round_id', roundId)
+        .in('challenge_id', retosABorrar)
+      if (borrarRetosError) throw borrarRetosError
+    }
+
+    // 3. Jueces: mismo diff insertar-nuevos / borrar-sobrantes
+    const { data: juecesActuales, error: leerJuecesError } = await supabase
       .from('judge_round_judges')
-      .delete()
+      .select('judge_id')
       .eq('round_id', roundId)
-    if (borrarJuecesError) throw borrarJuecesError
+    if (leerJuecesError) throw leerJuecesError
 
-    const filasJueces = data.judge_ids.map((jid) => ({
-      round_id: roundId,
-      judge_id: jid,
-    }))
-    const { error: insertarJuecesError } = await supabase
-      .from('judge_round_judges')
-      .insert(filasJueces)
-    if (insertarJuecesError) throw insertarJuecesError
+    const juecesPrevios = new Set((juecesActuales ?? []).map((r) => r.judge_id))
+    const juecesDeseados = new Set(data.judge_ids)
+    const juecesAInsertar = data.judge_ids.filter((id) => !juecesPrevios.has(id))
+    const juecesABorrar = [...juecesPrevios].filter((id) => !juecesDeseados.has(id))
+
+    if (juecesAInsertar.length > 0) {
+      const { error: insertarJuecesError } = await supabase
+        .from('judge_round_judges')
+        .insert(juecesAInsertar.map((jid) => ({ round_id: roundId, judge_id: jid })))
+      if (insertarJuecesError) throw insertarJuecesError
+    }
+    if (juecesABorrar.length > 0) {
+      const { error: borrarJuecesError } = await supabase
+        .from('judge_round_judges')
+        .delete()
+        .eq('round_id', roundId)
+        .in('judge_id', juecesABorrar)
+      if (borrarJuecesError) throw borrarJuecesError
+    }
 
     // 4. Reemplazar participantes de la etapa (diff insert/delete)
     await aplicarParticipantes(data.stage_id, data.participant_ids)
