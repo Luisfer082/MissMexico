@@ -8,6 +8,18 @@ interface Props {
 // Indicador de sincronización del módulo juez. El color NUNCA es el único
 // indicador (a11y): siempre acompaña icono + texto.
 function SyncStatusBadge({ estado, pendientes }: Props) {
+  if (estado === 'bloqueado') {
+    // La ronda se cerró con calificaciones sin enviar: quedan congeladas.
+    return (
+      <span className="inline-flex items-center gap-2 px-3 min-h-[36px] rounded-full text-xs font-semibold bg-gray-200 text-slate-700">
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+        </svg>
+        Ronda cerrada · {pendientes} sin enviar
+      </span>
+    )
+  }
+
   if (estado === 'offline') {
     return (
       <span className="inline-flex items-center gap-2 px-3 min-h-[36px] rounded-full text-xs font-semibold bg-amber-100 text-amber-800">

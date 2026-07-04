@@ -64,9 +64,13 @@ function CeldaScoreJuez({ value, disabled, onCommit }: CeldaProps) {
 
 function CalificarPage() {
   const { ronda, retos, finalistas, scoresIniciales, loading, error } = useRondaJuez()
-  const { getScore, setScore, estado, pendientes } = useCalificacionJuez(ronda, scoresIniciales)
+  const { getScore, setScore, estado, pendientes, rondaBloqueada } = useCalificacionJuez(
+    ronda,
+    scoresIniciales,
+  )
 
-  const cerrada = ronda?.status === 'cerrada'
+  // Cerrada al cargar, o detectada como cerrada en caliente por el rechazo de la BD.
+  const cerrada = ronda?.status === 'cerrada' || rondaBloqueada
 
   if (loading) {
     return (
