@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import { useRondasJueces } from '../../hooks/useRondasJueces'
 import { rondaJuezSchema } from '../../schemas/rondaJuez'
+import { mensajeError } from '../../utils/mensaje-error'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import SelectorParticipantesDrawer from '../../components/SelectorParticipantesDrawer'
 import type { RondaResumen } from '../../hooks/useRondasJueces'
@@ -123,7 +124,7 @@ function RondasJuecesPage() {
       await toast.promise(crearRonda(parsed.data), {
         loading: 'Creando ronda...',
         success: 'Ronda creada',
-        error: (err: unknown) => (err instanceof Error ? err.message : 'Error al crear la ronda'),
+        error: (err: unknown) => mensajeError(err, 'Error al crear la ronda'),
       })
       resetForm()
     } catch {
@@ -153,7 +154,7 @@ function RondasJuecesPage() {
         loading: 'Guardando cambios...',
         success: 'Ronda actualizada',
         error: (err: unknown) =>
-          err instanceof Error ? err.message : 'Error al actualizar la ronda',
+          mensajeError(err, 'Error al actualizar la ronda'),
       })
       setRondaEditando(null)
       resetForm()
@@ -171,7 +172,7 @@ function RondasJuecesPage() {
     await toast.promise(cerrarRonda(ronda.id), {
       loading: 'Cerrando ronda...',
       success: 'Ronda cerrada',
-      error: (err: unknown) => (err instanceof Error ? err.message : 'Error al cerrar la ronda'),
+      error: (err: unknown) => mensajeError(err, 'Error al cerrar la ronda'),
     })
   }
 
@@ -196,7 +197,7 @@ function RondasJuecesPage() {
         loading: 'Guardando participantes...',
         success: 'Participantes actualizados',
         error: (err: unknown) =>
-          err instanceof Error ? err.message : 'Error al guardar los participantes',
+          mensajeError(err, 'Error al guardar los participantes'),
       })
     }
   }
@@ -218,7 +219,7 @@ function RondasJuecesPage() {
     await toast.promise(eliminarRonda(ronda.id), {
       loading: 'Eliminando ronda...',
       success: 'Ronda eliminada',
-      error: (err: unknown) => (err instanceof Error ? err.message : 'Error al eliminar la ronda'),
+      error: (err: unknown) => mensajeError(err, 'Error al eliminar la ronda'),
     })
   }
 

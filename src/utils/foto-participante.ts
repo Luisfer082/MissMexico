@@ -67,3 +67,15 @@ export async function subirFotoParticipante(blob: Blob, edicionId: string): Prom
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(ruta)
   return data.publicUrl
 }
+
+// Borra del bucket la foto que apunta una URL pública nuestra. Si la URL no
+// pertenece al bucket (p. ej. una URL externa pegada a mano), no hace nada.
+export async function borrarFotoParticipante(publicUrl: string): Promise<void> {
+  const marcador = `/object/public/${BUCKET}/`
+  const idx = publicUrl.indexOf(marcador)
+  if (idx === -1) return
+
+  const ruta = decodeURIComponent(publicUrl.slice(idx + marcador.length))
+  const { error } = await supabase.storage.from(BUCKET).remove([ruta])
+  if (error) throw error
+}

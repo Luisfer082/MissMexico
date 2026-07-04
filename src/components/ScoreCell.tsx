@@ -21,6 +21,16 @@ function ScoreCell({ scoreId, value, onSave, onFocusChange }: Props) {
   // Ref para saber si el input está enfocado sin causar re-renders ni efectos extra
   const enfocadoRef = useRef(false)
 
+  // true mientras la celda esté montada: evita setState tras un await si la
+  // matriz se desmonta (p. ej. cambio de edición) con un guardado en vuelo.
+  const montadoRef = useRef(true)
+  useEffect(() => {
+    montadoRef.current = true
+    return () => {
+      montadoRef.current = false
+    }
+  }, [])
+
   // Sincroniza con la prop solo cuando el input NO está enfocado.
   // Permite que el eco realtime de otro cliente actualice la celda en vivo.
   useEffect(() => {
@@ -66,10 +76,12 @@ function ScoreCell({ scoreId, value, onSave, onFocusChange }: Props) {
     setEstado('guardando')
     try {
       await onSave(scoreId, resultado.data)
+      if (!montadoRef.current) return
       setEstado('guardado')
     } catch {
-      setEstado('error')
       toast.error('No se pudo guardar el puntaje')
+      if (!montadoRef.current) return
+      setEstado('error')
       // Revertir al valor original confirmado
       setTexto(String(value))
     }

@@ -46,12 +46,6 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
   // Estado del canal realtime: alimenta el indicador "En vivo" de la UI
   const [realtimeConectado, setRealtimeConectado] = useState(false)
 
-  // Ref para que updateScore siempre acceda al Map actual sin recrearse en cada cambio de scores
-  const scoresRef = useRef<Map<string, ScoreEntry>>(scores)
-  useEffect(() => {
-    scoresRef.current = scores
-  }, [scores])
-
   // ─── Carga inicial ────────────────────────────────────────────────────────
   useEffect(() => {
     let cancelado = false
@@ -361,12 +355,15 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
   // En error revierte al valor previo y re-lanza para que ScoreCell muestre toast.
   const updateScore = useCallback(
     async (scoreId: string, value: number): Promise<void> => {
-      // Capturar estado previo para revert usando el ref (evita dependencia en scores)
-      const entradaPrevia = scoresRef.current.get(scoreId)
+      // Valor pre-optimista para el revert. Se captura DENTRO del callback de
+      // setScores para que sea atómico: con dos updates concurrentes a la misma
+      // celda, cada uno revierte a lo que había justo antes de su optimismo.
+      let entradaPrevia: ScoreEntry | undefined
 
       // Actualización optimista inmediata
       setScores((prev) => {
         const entrada = prev.get(scoreId)
+        entradaPrevia = entrada
         if (!entrada) return prev
         const siguiente = new Map(prev)
         siguiente.set(scoreId, { ...entrada, score: value })
@@ -396,8 +393,6 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
       }
     },
     [user],
-    // scoresRef no necesita estar en deps: es una referencia mutable que siempre
-    // apunta al Map actual sin causar recreaciones del callback.
   )
 
   return { participantes, retos, getScore, leaderboard, loading, error, updateScore, realtimeConectado }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
 import { participanteSchema } from '../schemas/participante'
-import { comprimirImagen, subirFotoParticipante } from '../utils/foto-participante'
+import { borrarFotoParticipante, comprimirImagen, subirFotoParticipante } from '../utils/foto-participante'
 import { mensajeError } from '../utils/mensaje-error'
 import type { Tables } from '../types/database'
 
@@ -177,6 +177,18 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
             .insert(datos)
 
           if (error) throw error
+        }
+
+        // Limpieza best-effort: si la foto guardada cambió (reemplazo o quitar),
+        // borrar la anterior del bucket. Un fallo aquí deja un objeto huérfano
+        // en Storage pero no debe afectar el guardado ya confirmado.
+        const fotoAnterior = participante?.photo_url
+        if (esEdicion && fotoAnterior && fotoAnterior !== urlFoto) {
+          try {
+            await borrarFotoParticipante(fotoAnterior)
+          } catch {
+            // Objeto huérfano en el bucket; sin impacto funcional.
+          }
         }
 
         onGuardado()
