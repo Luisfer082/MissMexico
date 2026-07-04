@@ -50,6 +50,10 @@ export interface RondaResumen {
   challengeIds: string[]
   judgeIds: string[]
   participantIds: string[]
+  // true si ya existen judge_scores en la etapa de la ronda. Con calificaciones
+  // capturadas no se permite cambiar la ronda de etapa (los scores llevan el
+  // stage_id y quedarían huérfanos del visor y de la ronda).
+  tieneScores: boolean
 }
 
 export interface UseRondasJuecesResult {
@@ -197,6 +201,17 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
           }
         }
 
+        // 5b. Etapas que ya tienen judge_scores capturados (para bloquear el
+        //     cambio de etapa al editar). Solo se pide stage_id y se deduplica.
+        const etapasConScores = new Set<string>()
+        const { data: jsData, error: jsError } = await supabase
+          .from('judge_scores')
+          .select('stage_id')
+          .in('stage_id', stageIds)
+        if (cancelado) return
+        if (jsError) throw jsError
+        for (const row of jsData ?? []) etapasConScores.add(row.stage_id)
+
         // 6. Participantes por etapa (stage_participants). Como ronda↔etapa es
         //    1:1, los participantes de la ronda son los de su stage_id.
         const idsPorEtapaParticipantes = new Map<string, string[]>()
@@ -225,6 +240,7 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
           challengeIds: idsPorRondaRetos.get(r.id) ?? [],
           judgeIds: idsPorRondaJueces.get(r.id) ?? [],
           participantIds: idsPorEtapaParticipantes.get(r.stage_id) ?? [],
+          tieneScores: etapasConScores.has(r.stage_id),
         }))
 
         if (!cancelado) {
@@ -351,6 +367,30 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
   // Estrategia: actualizar la ronda, borrar relaciones antiguas y reinsertar.
   // No es una transacción atómica en la BD, pero es idempotente si se reintenta.
   const editarRonda = useCallback(async (roundId: string, data: RondaJuezFormData): Promise<void> => {
+    // 0. Guarda: si la ronda cambia de etapa y ya hay judge_scores capturados
+    //    en la etapa actual, se rechaza. Los scores llevan stage_id y migrarlos
+    //    no es viable (el encargado no tiene UPDATE sobre judge_scores por RLS);
+    //    permitirlo los dejaría huérfanos del visor pero sumando al leaderboard.
+    const { data: rondaActual, error: rondaActualError } = await supabase
+      .from('judge_rounds')
+      .select('stage_id')
+      .eq('id', roundId)
+      .single()
+    if (rondaActualError) throw rondaActualError
+
+    if (rondaActual.stage_id !== data.stage_id) {
+      const { count, error: scoresError } = await supabase
+        .from('judge_scores')
+        .select('id', { count: 'exact', head: true })
+        .eq('stage_id', rondaActual.stage_id)
+      if (scoresError) throw scoresError
+      if ((count ?? 0) > 0) {
+        throw new Error(
+          'La ronda ya tiene calificaciones de jueces: no se puede cambiar de etapa.',
+        )
+      }
+    }
+
     // 1. Actualizar la etapa de la ronda
     const { error: updateError } = await supabase
       .from('judge_rounds')
