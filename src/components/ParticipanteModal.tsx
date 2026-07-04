@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
 import { participanteSchema } from '../schemas/participante'
 import { comprimirImagen, subirFotoParticipante } from '../utils/foto-participante'
+import { mensajeError } from '../utils/mensaje-error'
 import type { Tables } from '../types/database'
 
 interface Props {
@@ -144,8 +145,9 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
 
     setSubmitting(true)
 
-    await toast.promise(
-      (async () => {
+    try {
+      await toast.promise(
+        (async () => {
         // Si hay foto nueva, súbela primero y usa su URL pública. Si no, conserva
         // la URL guardada (o null si se quitó). Va dentro del try para que un fallo
         // de subida cancele el guardado y dispare el toast de error.
@@ -179,18 +181,20 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
 
         onGuardado()
         onClose()
-      })(),
-      {
-        loading: esEdicion ? 'Actualizando participante...' : 'Registrando participante...',
-        success: esEdicion ? 'Participante actualizada' : 'Participante registrada',
-        error: (err: unknown) => {
-          if (err instanceof Error) return err.message
-          return 'Error al guardar'
-        },
-      }
-    )
-
-    setSubmitting(false)
+        })(),
+        {
+          loading: esEdicion ? 'Actualizando participante...' : 'Registrando participante...',
+          success: esEdicion ? 'Participante actualizada' : 'Participante registrada',
+          // PostgrestError/StorageError no son instancias de Error: extraer .message
+          error: (err: unknown) => mensajeError(err, 'Error al guardar'),
+        }
+      )
+    } catch {
+      // toast.promise ya notificó el error; solo evitamos dejar el modal trabado.
+    } finally {
+      // Siempre rehabilitar el formulario, incluso si la subida de foto falló.
+      setSubmitting(false)
+    }
   }
 
   // Clases base compartidas para inputs del formulario
