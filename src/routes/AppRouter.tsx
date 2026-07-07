@@ -12,7 +12,9 @@ import CalificacionesPage from '../pages/encargado/CalificacionesPage'
 import RondasJuecesPage from '../pages/encargado/RondasJuecesPage'
 import JuezLayout from '../layouts/JuezLayout'
 import CalificarPage from '../pages/juez/CalificarPage'
-import DirectorPlaceholder from '../pages/director/DirectorPlaceholder'
+import DirectorLayout from '../layouts/DirectorLayout'
+import PromediosPage from '../pages/director/PromediosPage'
+import TitulosPage from '../pages/director/TitulosPage'
 import AnunciadorPlaceholder from '../pages/anunciador/AnunciadorPlaceholder'
 
 function AppRouter() {
@@ -55,13 +57,16 @@ function AppRouter() {
 
         {/* Director — Fase 6 */}
         <Route
-          path="/director/*"
+          path="/director"
           element={
             <RequireRole roles={['director']}>
-              <DirectorPlaceholder />
+              <DirectorLayout />
             </RequireRole>
           }
-        />
+        >
+          <Route index element={<PromediosPage />} />
+          <Route path="titulos" element={<TitulosPage />} />
+        </Route>
 
         {/* Anunciador — Fase 7 */}
         <Route
