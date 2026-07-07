@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRondaJuez } from '../../hooks/useRondaJuez'
 import { useCalificacionJuez } from '../../hooks/useCalificacionJuez'
 import SyncStatusBadge from '../../components/SyncStatusBadge'
@@ -62,15 +62,35 @@ function CeldaScoreJuez({ value, disabled, onCommit }: CeldaProps) {
   )
 }
 
+// Normaliza para búsqueda: minúsculas y sin acentos, para que "Mónica" ≈ "monica".
+function normalizar(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
 function CalificarPage() {
   const { ronda, retos, finalistas, scoresIniciales, loading, error } = useRondaJuez()
   const { getScore, setScore, estado, pendientes, rondaBloqueada } = useCalificacionJuez(
     ronda,
     scoresIniciales,
   )
+  const [busqueda, setBusqueda] = useState('')
 
   // Cerrada al cargar, o detectada como cerrada en caliente por el rechazo de la BD.
   const cerrada = ronda?.status === 'cerrada' || rondaBloqueada
+
+  const finalistasFiltradas = useMemo(() => {
+    const q = normalizar(busqueda.trim())
+    if (q === '') return finalistas
+    return finalistas.filter(
+      (f) =>
+        normalizar(f.full_name).includes(q) ||
+        normalizar(f.region).includes(q) ||
+        f.sash_number.toString() === q,
+    )
+  }, [finalistas, busqueda])
 
   if (loading) {
     return (
@@ -99,10 +119,27 @@ function CalificarPage() {
 
   return (
     <div>
-      {/* Barra superior: estado de sync (sticky bajo el header) */}
-      <div className="sticky top-[60px] z-10 -mx-4 px-4 py-3 bg-gray-50/95 backdrop-blur flex items-center justify-between gap-3 mb-4">
-        <h1 className="text-lg font-bold text-slate-900">Calificación</h1>
-        <SyncStatusBadge estado={estado} pendientes={pendientes} />
+      {/* Barra superior: etapa en curso + estado de sync (sticky bajo el header) */}
+      <div className="sticky top-[60px] z-10 -mx-4 px-4 py-3 bg-gray-50/95 backdrop-blur mb-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-lg font-bold text-slate-900 truncate">Calificación</h1>
+            <p className="text-sm text-brand-700 font-semibold truncate">
+              Etapa: {ronda.stage_name}
+            </p>
+          </div>
+          <SyncStatusBadge estado={estado} pendientes={pendientes} />
+        </div>
+        <input
+          type="search"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          placeholder="Buscar por nombre, región o número…"
+          aria-label="Buscar participante"
+          className="mt-3 w-full min-h-[44px] px-4 text-sm text-slate-900 bg-white border border-gray-300
+            rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
+            placeholder:text-slate-400"
+        />
       </div>
 
       {cerrada && (
@@ -119,6 +156,12 @@ function CalificarPage() {
               : 'La etapa no tiene finalistas asignados.'}
           </p>
         </div>
+      ) : finalistasFiltradas.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-slate-500 text-sm">
+            Ninguna participante coincide con «{busqueda.trim()}».
+          </p>
+        </div>
       ) : (
         <div className="space-y-6">
           {retos.map((reto) => (
@@ -127,7 +170,7 @@ function CalificarPage() {
                 <h2 className="font-semibold text-slate-900 text-sm">{reto.name}</h2>
               </header>
               <ul className="divide-y divide-gray-50">
-                {finalistas.map((f) => (
+                {finalistasFiltradas.map((f) => (
                   <li key={f.id} className="flex items-center justify-between gap-3 px-4 py-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex-shrink-0">

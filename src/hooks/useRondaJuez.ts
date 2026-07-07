@@ -11,6 +11,7 @@ import { useAppStore } from '../stores/useAppStore'
 export interface RondaActiva {
   id: string
   stage_id: string
+  stage_name: string
   status: string
   closed_at: string | null
 }
@@ -94,7 +95,7 @@ export function useRondaJuez(): UseRondaJuezResult {
         //    o la más reciente si todas están cerradas → vista read-only).
         const { data: rondasData, error: rondasError } = await supabase
           .from('judge_rounds')
-          .select('id, stage_id, status, closed_at, created_at')
+          .select('id, stage_id, status, closed_at, created_at, stages(name)')
           .in('id', roundIds)
           .order('created_at', { ascending: false })
         if (cancelado) return
@@ -158,6 +159,8 @@ export function useRondaJuez(): UseRondaJuezResult {
           setRonda({
             id: activa.id,
             stage_id: activa.stage_id,
+            // stages es la relación to-one; Supabase la tipa como objeto (o null)
+            stage_name: activa.stages?.name ?? '—',
             status: activa.status,
             closed_at: activa.closed_at,
           })
