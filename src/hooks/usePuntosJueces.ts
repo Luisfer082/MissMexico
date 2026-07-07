@@ -1,5 +1,6 @@
 // Hook para cargar los puntos capturados por los jueces, agrupables por ronda.
-// Solo para consumo del módulo Encargado.
+// Consumo: módulo Encargado (visor Puntos jueces) y módulo Director (Promedios,
+// vía usePromediosDirector). Jamás el módulo Juez (regla 5).
 //
 // Seguridad: no se agregan políticas nuevas. La política existente
 // "judge_scores_select_admin" (migración 20260520010001_judge_scoring.sql)
