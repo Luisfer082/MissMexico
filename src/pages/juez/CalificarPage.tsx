@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useRondaJuez } from '../../hooks/useRondaJuez'
 import { useCalificacionJuez } from '../../hooks/useCalificacionJuez'
 import SyncStatusBadge from '../../components/SyncStatusBadge'
+import { normalizar } from '../../utils/texto'
 
 // ─── Celda de puntaje (1-10) ──────────────────────────────────────────────────
 // Mantiene su propio texto mientras se edita; al confirmar valida 1-10 y
@@ -60,14 +61,6 @@ function CeldaScoreJuez({ value, disabled, onCommit }: CeldaProps) {
         disabled:bg-gray-100 disabled:text-slate-400 disabled:cursor-not-allowed"
     />
   )
-}
-
-// Normaliza para búsqueda: minúsculas y sin acentos, para que "Mónica" ≈ "monica".
-function normalizar(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
 }
 
 function CalificarPage() {
