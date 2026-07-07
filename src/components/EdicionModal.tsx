@@ -2,6 +2,7 @@ import { useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
 import { edicionSchema } from '../schemas/edicion'
+import { seedTitulos } from '../utils/seed-titulos'
 import Modal from './Modal'
 import type { Tables } from '../types/database'
 
@@ -62,11 +63,24 @@ function EdicionModal({ edicion, onClose, onGuardado }: Props) {
 
           if (error) throw error
         } else {
-          const { error } = await supabase
+          const { data: creada, error } = await supabase
             .from('editions')
             .insert(datos)
+            .select('id')
+            .single()
 
           if (error) throw error
+
+          // Seed del catálogo de títulos (6 títulos + 2 finalistas). Si falla,
+          // la edición ya existe: avisar sin revertir; el modal "Títulos" de
+          // Ediciones permite generarlos después.
+          try {
+            await seedTitulos(creada.id)
+          } catch {
+            toast.error(
+              'Edición creada, pero no se generaron sus títulos. Usa el botón "Títulos" para generarlos.',
+            )
+          }
         }
 
         onGuardado()

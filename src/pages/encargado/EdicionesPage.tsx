@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase'
 import EdicionModal from '../../components/EdicionModal'
+import TitulosModal from '../../components/TitulosModal'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import type { Tables } from '../../types/database'
 
@@ -18,6 +19,9 @@ function EdicionesPage() {
 
   // Edición pendiente de confirmar borrado (null = sin confirmación abierta)
   const [edicionAEliminar, setEdicionAEliminar] = useState<Edicion | null>(null)
+
+  // Edición cuyo catálogo de títulos se está editando (null = modal cerrado)
+  const [edicionTitulos, setEdicionTitulos] = useState<Edicion | null>(null)
 
   // Contador para disparar recarga después de guardar/activar
   const [recargar, setRecargar] = useState(0)
@@ -189,6 +193,13 @@ function EdicionesPage() {
                         Editar
                       </button>
                       <button
+                        onClick={() => setEdicionTitulos(e)}
+                        className="px-3 py-1 text-xs font-medium text-brand-700 border border-brand-200
+                          hover:bg-brand-50 rounded-md transition-colors"
+                      >
+                        Títulos
+                      </button>
+                      <button
                         onClick={() => setEdicionAEliminar(e)}
                         disabled={e.is_active}
                         className="px-3 py-1 text-xs font-medium text-red-600 border border-red-200
@@ -211,6 +222,15 @@ function EdicionesPage() {
           edicion={edicionEditando}
           onClose={handleCerrarModal}
           onGuardado={handleGuardado}
+        />
+      )}
+
+      {/* Modal de catálogo de títulos */}
+      {edicionTitulos && (
+        <TitulosModal
+          edicionId={edicionTitulos.id}
+          edicionNombre={edicionTitulos.name}
+          onClose={() => setEdicionTitulos(null)}
         />
       )}
 
