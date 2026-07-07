@@ -147,10 +147,11 @@ export function usePuntosJueces(edicionId: string | undefined): UsePuntosJuecesR
         //    leer TODAS las filas — no es necesario filtrar por judge_id.
         const { data: scoresData, error: scoresError } = await supabase
           .from('judge_scores')
+          // El select debe ser UN literal (sin concatenar): TypeScript solo
+          // conserva el tipo literal completo así, y el parser de tipos de
+          // Supabase lo necesita para inferir las columnas del join.
           .select(
-            'id, judge_id, participant_id, challenge_id, stage_id, score, updated_at,' +
-              'participants!judge_scores_participant_id_fkey(full_name, region, sash_number),' +
-              'challenges!judge_scores_challenge_id_fkey(name, order_num)',
+            'id, judge_id, participant_id, challenge_id, stage_id, score, updated_at, participants!judge_scores_participant_id_fkey(full_name, region, sash_number), challenges!judge_scores_challenge_id_fkey(name, order_num)',
           )
           .in('stage_id', roundStageIds)
 
