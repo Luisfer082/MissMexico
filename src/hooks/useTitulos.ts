@@ -28,6 +28,8 @@ export interface UseTitulosResult {
   asignar: (tituloId: string, participantId: string) => Promise<void>
   /** Quita una asignación no aprobada. */
   quitar: (asignacionId: string) => Promise<void>
+  /** Aprueba TODAS las asignaciones de la edición. Irreversible (trigger en BD). */
+  aprobar: () => Promise<void>
 }
 
 export function useTitulos(edicionId: string | undefined): UseTitulosResult {
@@ -163,5 +165,27 @@ export function useTitulos(edicionId: string | undefined): UseTitulosResult {
     [recargar],
   )
 
-  return { titulos, asignaciones, participantes, loading, error, recargar, asignar, quitar }
+  const aprobar = useCallback(async () => {
+    if (!edicionId) return
+    await toast.promise(
+      (async () => {
+        // approved=true dispara el sellado de approved_at en BD y a partir de
+        // ahí el trigger prevent_mutation_when_approved congela las filas.
+        const { error: err } = await supabase
+          .from('title_assignments')
+          .update({ approved: true })
+          .eq('edition_id', edicionId)
+          .eq('approved', false)
+        if (err) throw err
+        recargar()
+      })(),
+      {
+        loading: 'Aprobando asignaciones...',
+        success: 'Asignaciones aprobadas. Son definitivas.',
+        error: (err: unknown) => (err instanceof Error ? err.message : 'Error al aprobar'),
+      },
+    )
+  }, [edicionId, recargar])
+
+  return { titulos, asignaciones, participantes, loading, error, recargar, asignar, quitar, aprobar }
 }

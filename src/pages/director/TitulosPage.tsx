@@ -1,7 +1,8 @@
-// Pantalla Títulos del director (Fase 6, paso 4): asignación drag-and-drop de
-// los 8 títulos (6 títulos + 2 finalistas). El pool muestra a todas las
+// Pantalla Títulos del director (Fase 6, pasos 4-5): asignación drag-and-drop
+// de los 8 títulos (6 títulos + 2 finalistas). El pool muestra a todas las
 // participantes de la edición aún sin título; soltar sobre un slot asigna (o
-// reemplaza). La aprobación (paso 5) congela todo.
+// reemplaza). La aprobación exige confirmación doble y es IRREVERSIBLE
+// (trigger prevent_mutation_when_approved en BD).
 
 import { useMemo, useState } from 'react'
 import {
@@ -17,6 +18,7 @@ import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import { useTitulos } from '../../hooks/useTitulos'
 import type { ParticipanteTitulos } from '../../hooks/useTitulos'
 import SlotTitulo from '../../components/SlotTitulo'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import { normalizar } from '../../utils/texto'
 
 // ─── Tarjeta arrastrable del pool ─────────────────────────────────────────────
@@ -57,9 +59,11 @@ function TarjetaParticipante({ participante, disabled }: TarjetaProps) {
 
 function TitulosPage() {
   const { edicion, loading: loadingEdicion, error: errorEdicion } = useEdicionActiva()
-  const { titulos, asignaciones, participantes, loading, error, recargar, asignar, quitar } =
+  const { titulos, asignaciones, participantes, loading, error, recargar, asignar, quitar, aprobar } =
     useTitulos(edicion?.id)
   const [busqueda, setBusqueda] = useState('')
+  // Confirmación doble de la aprobación (regla 7): dos modales encadenados.
+  const [confirmacion, setConfirmacion] = useState<'ninguna' | 'primera' | 'segunda'>('ninguna')
 
   // Distancia mínima para iniciar el drag: permite que los taps/clicks dentro
   // de la tarjeta no arranquen un arrastre accidental (también en touch).
@@ -90,10 +94,17 @@ function TitulosPage() {
   }, [participantes, asignaciones, busqueda])
 
   const todasAprobadas = asignaciones.length > 0 && asignaciones.every((a) => a.approved)
+  // El botón de aprobar solo se habilita con TODOS los títulos asignados (paso 5).
+  const todosAsignados = titulos.length > 0 && asignaciones.length === titulos.length
 
   const handleDragEnd = (e: DragEndEvent) => {
     if (!e.over) return
     void asignar(String(e.over.id), String(e.active.id))
+  }
+
+  const confirmarAprobacion = () => {
+    setConfirmacion('ninguna')
+    void aprobar()
   }
 
   // ─── Estados de carga / error / vacío ─────────────────────────────────────
@@ -147,13 +158,33 @@ function TitulosPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between gap-4 mb-5">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Títulos</h1>
           <p className="text-slate-500 text-sm mt-1">
             {edicion.name} — {asignaciones.length} de {titulos.length} asignados
           </p>
         </div>
+        {!todasAprobadas && (
+          <div className="text-right">
+            <button
+              type="button"
+              onClick={() => setConfirmacion('primera')}
+              disabled={!todosAsignados}
+              className="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium
+                hover:bg-brand-700 transition-colors focus:outline-none focus:ring-2
+                focus:ring-brand-500 focus:ring-offset-2
+                disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              Aprobar asignaciones
+            </button>
+            {!todosAsignados && (
+              <p className="text-xs text-slate-400 mt-1.5">
+                Asigna los {titulos.length} títulos para poder aprobar.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {todasAprobadas && (
@@ -220,6 +251,28 @@ function TitulosPage() {
         Arrastra una participante del pool a un título para asignarla. Soltar sobre un título
         ocupado reemplaza a la participante anterior. Cada participante puede tener un solo título.
       </p>
+
+      {/* Confirmación doble (regla 7): la aprobación es irreversible en BD */}
+      {confirmacion === 'primera' && (
+        <ConfirmDialog
+          titulo="¿Aprobar las asignaciones?"
+          mensaje={`Se aprobarán los ${titulos.length} títulos de ${edicion.name}. Una vez aprobadas, las asignaciones quedan congeladas y NO se pueden modificar ni quitar.`}
+          textoConfirmar="Continuar"
+          onConfirmar={() => setConfirmacion('segunda')}
+          onCancelar={() => setConfirmacion('ninguna')}
+        />
+      )}
+      {confirmacion === 'segunda' && (
+        <ConfirmDialog
+          titulo="Esta acción es irreversible"
+          mensaje="Confirmación final: al aprobar, la base de datos bloquea cualquier cambio a los títulos de forma permanente. No hay manera de deshacerlo. ¿Aprobar definitivamente?"
+          textoConfirmar="Sí, aprobar definitivamente"
+          textoCancelar="No, volver"
+          peligro
+          onConfirmar={confirmarAprobacion}
+          onCancelar={() => setConfirmacion('ninguna')}
+        />
+      )}
     </div>
   )
 }
