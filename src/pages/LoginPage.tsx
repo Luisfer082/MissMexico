@@ -46,14 +46,9 @@ function LoginPage() {
     try {
       await toast.promise(
         (async () => {
+          // signIn deja user+profile en el store antes de resolver,
+          // así que el rol ya está disponible sin esperas arbitrarias.
           await signIn(email, password)
-
-          // Cargar el perfil actualizado desde el store (ya actualizado por onAuthStateChange)
-          // Necesitamos leer el profile después del signIn
-          // Pequeña espera para que el listener de auth procese el estado
-          await new Promise<void>((resolve) => setTimeout(resolve, 300))
-
-          // Leer el profile del store después del login
           const currentProfile = useAppStore.getState().profile
 
           if (!currentProfile?.role) {
