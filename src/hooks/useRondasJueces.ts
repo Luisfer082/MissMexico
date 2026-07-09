@@ -106,40 +106,39 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
       }
 
       try {
-        // 1. Etapas de la edición
-        const { data: etapasData, error: etapasError } = await supabase
-          .from('stages')
-          .select('id, name, order_num, status')
-          .eq('edition_id', edicionId)
-          .order('order_num', { ascending: true })
+        // Tanda 1: etapas, retos, jueces y participantes son independientes
+        // entre sí → una sola tanda paralela.
+        const [
+          { data: etapasData, error: etapasError },
+          { data: retosData, error: retosError },
+          { data: juecesData, error: juecesError },
+          { data: participantesData, error: participantesError },
+        ] = await Promise.all([
+          supabase
+            .from('stages')
+            .select('id, name, order_num, status')
+            .eq('edition_id', edicionId)
+            .order('order_num', { ascending: true }),
+          supabase
+            .from('challenges')
+            .select('id, name, order_num')
+            .eq('edition_id', edicionId)
+            .order('order_num', { ascending: true }),
+          supabase
+            .from('profiles')
+            .select('id, full_name')
+            .eq('role', 'juez')
+            .order('full_name', { ascending: true }),
+          supabase
+            .from('participants')
+            .select('id, full_name, sash_number, region, photo_url')
+            .eq('edition_id', edicionId)
+            .order('sash_number', { ascending: true }),
+        ])
         if (cancelado) return
         if (etapasError) throw etapasError
-
-        // 2. Retos de la edición
-        const { data: retosData, error: retosError } = await supabase
-          .from('challenges')
-          .select('id, name, order_num')
-          .eq('edition_id', edicionId)
-          .order('order_num', { ascending: true })
-        if (cancelado) return
         if (retosError) throw retosError
-
-        // 3. Jueces (perfiles con rol 'juez')
-        const { data: juecesData, error: juecesError } = await supabase
-          .from('profiles')
-          .select('id, full_name')
-          .eq('role', 'juez')
-          .order('full_name', { ascending: true })
-        if (cancelado) return
         if (juecesError) throw juecesError
-
-        // 3b. Participantes de la edición (universo del selector)
-        const { data: participantesData, error: participantesError } = await supabase
-          .from('participants')
-          .select('id, full_name, sash_number, region, photo_url')
-          .eq('edition_id', edicionId)
-          .order('sash_number', { ascending: true })
-        if (cancelado) return
         if (participantesError) throw participantesError
 
         // 4. Rondas de esta edición + nombre de etapa.
@@ -159,16 +158,42 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
           return
         }
 
-        const { data: rondasData, error: rondasError } = await supabase
-          .from('judge_rounds')
-          .select('id, stage_id, status, closed_at, stages(name, status)')
-          .in('stage_id', stageIds)
-          .order('created_at', { ascending: false })
+        // Tanda 2: rondas, judge_scores por etapa y stage_participants solo
+        // dependen de stageIds → en paralelo.
+        const [
+          { data: rondasData, error: rondasError },
+          { data: jsData, error: jsError },
+          { data: spData, error: spError },
+        ] = await Promise.all([
+          supabase
+            .from('judge_rounds')
+            .select('id, stage_id, status, closed_at, stages(name, status)')
+            .in('stage_id', stageIds)
+            .order('created_at', { ascending: false }),
+          // Etapas que ya tienen judge_scores capturados (para bloquear el
+          // cambio de etapa al editar). Solo se pide stage_id y se deduplica.
+          supabase.from('judge_scores').select('stage_id').in('stage_id', stageIds),
+          // Participantes por etapa (stage_participants). Como ronda↔etapa es
+          // 1:1, los participantes de la ronda son los de su stage_id.
+          supabase.from('stage_participants').select('stage_id, participant_id').in('stage_id', stageIds),
+        ])
         if (cancelado) return
         if (rondasError) throw rondasError
+        if (jsError) throw jsError
+        if (spError) throw spError
 
-        // 5. IDs y conteos de retos y jueces por ronda (2 queries, sin N+1).
-        //    Se almacenan los IDs para pre-poblar el formulario de edición.
+        const etapasConScores = new Set<string>()
+        for (const row of jsData ?? []) etapasConScores.add(row.stage_id)
+
+        const idsPorEtapaParticipantes = new Map<string, string[]>()
+        for (const row of spData ?? []) {
+          const prev = idsPorEtapaParticipantes.get(row.stage_id) ?? []
+          idsPorEtapaParticipantes.set(row.stage_id, [...prev, row.participant_id])
+        }
+
+        // Tanda 3: IDs y conteos de retos y jueces por ronda (2 queries en
+        // paralelo, sin N+1). Se almacenan los IDs para pre-poblar el
+        // formulario de edición.
         const roundIds = (rondasData ?? []).map((r) => r.id)
         const conteoRetos = new Map<string, number>()
         const conteoJueces = new Map<string, number>()
@@ -176,54 +201,33 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
         const idsPorRondaJueces = new Map<string, string[]>()
 
         if (roundIds.length > 0) {
-          const { data: rcData, error: rcError } = await supabase
-            .from('judge_round_challenges')
-            .select('round_id, challenge_id')
-            .in('round_id', roundIds)
+          const [
+            { data: rcData, error: rcError },
+            { data: rjData, error: rjError },
+          ] = await Promise.all([
+            supabase
+              .from('judge_round_challenges')
+              .select('round_id, challenge_id')
+              .in('round_id', roundIds),
+            supabase
+              .from('judge_round_judges')
+              .select('round_id, judge_id')
+              .in('round_id', roundIds),
+          ])
           if (cancelado) return
           if (rcError) throw rcError
+          if (rjError) throw rjError
+
           for (const row of rcData ?? []) {
             conteoRetos.set(row.round_id, (conteoRetos.get(row.round_id) ?? 0) + 1)
             const prev = idsPorRondaRetos.get(row.round_id) ?? []
             idsPorRondaRetos.set(row.round_id, [...prev, row.challenge_id])
           }
-
-          const { data: rjData, error: rjError } = await supabase
-            .from('judge_round_judges')
-            .select('round_id, judge_id')
-            .in('round_id', roundIds)
-          if (cancelado) return
-          if (rjError) throw rjError
           for (const row of rjData ?? []) {
             conteoJueces.set(row.round_id, (conteoJueces.get(row.round_id) ?? 0) + 1)
             const prev = idsPorRondaJueces.get(row.round_id) ?? []
             idsPorRondaJueces.set(row.round_id, [...prev, row.judge_id])
           }
-        }
-
-        // 5b. Etapas que ya tienen judge_scores capturados (para bloquear el
-        //     cambio de etapa al editar). Solo se pide stage_id y se deduplica.
-        const etapasConScores = new Set<string>()
-        const { data: jsData, error: jsError } = await supabase
-          .from('judge_scores')
-          .select('stage_id')
-          .in('stage_id', stageIds)
-        if (cancelado) return
-        if (jsError) throw jsError
-        for (const row of jsData ?? []) etapasConScores.add(row.stage_id)
-
-        // 6. Participantes por etapa (stage_participants). Como ronda↔etapa es
-        //    1:1, los participantes de la ronda son los de su stage_id.
-        const idsPorEtapaParticipantes = new Map<string, string[]>()
-        const { data: spData, error: spError } = await supabase
-          .from('stage_participants')
-          .select('stage_id, participant_id')
-          .in('stage_id', stageIds)
-        if (cancelado) return
-        if (spError) throw spError
-        for (const row of spData ?? []) {
-          const prev = idsPorEtapaParticipantes.get(row.stage_id) ?? []
-          idsPorEtapaParticipantes.set(row.stage_id, [...prev, row.participant_id])
         }
 
         const rondasResumen: RondaResumen[] = (rondasData ?? []).map((r) => ({

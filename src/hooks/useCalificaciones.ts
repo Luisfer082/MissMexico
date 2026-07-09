@@ -70,70 +70,70 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
       }
 
       try {
-        // 1. Participantes de la edición
-        const { data: partsData, error: partsError } = await supabase
-          .from('participants')
-          .select('id, full_name, region, sash_number')
-          .eq('edition_id', edicionId)
-          .order('sash_number', { ascending: true })
+        // Tanda 1: participantes y retos son independientes → en paralelo
+        const [
+          { data: partsData, error: partsError },
+          { data: retosData, error: retosError },
+        ] = await Promise.all([
+          supabase
+            .from('participants')
+            .select('id, full_name, region, sash_number')
+            .eq('edition_id', edicionId)
+            .order('sash_number', { ascending: true }),
+          supabase
+            .from('challenges')
+            .select('id, name, order_num')
+            .eq('edition_id', edicionId)
+            .order('order_num', { ascending: true }),
+        ])
 
         if (cancelado) return
         if (partsError) throw partsError
-
-        // 2. Retos de la edición
-        const { data: retosData, error: retosError } = await supabase
-          .from('challenges')
-          .select('id, name, order_num')
-          .eq('edition_id', edicionId)
-          .order('order_num', { ascending: true })
-
-        if (cancelado) return
         if (retosError) throw retosError
 
         const challengeIds = (retosData ?? []).map((r) => r.id)
+        const participantIds = (partsData ?? []).map((p) => p.id)
 
-        // 3. Scores (solo si existe al menos un reto)
+        // Tanda 2: scores del encargado y de jueces dependen de los ids de la
+        // tanda 1 pero no entre sí → también en paralelo.
+        // judge_scores se filtra por participant_id (cada participante pertenece
+        // a una sola edición). RLS "judge_scores_select_admin" cubre al encargado.
+        const [scoresRes, judgeRes] = await Promise.all([
+          challengeIds.length > 0
+            ? supabase
+                .from('challenge_scores')
+                .select('id, challenge_id, participant_id, score')
+                .in('challenge_id', challengeIds)
+            : Promise.resolve({ data: null, error: null }),
+          participantIds.length > 0
+            ? supabase
+                .from('judge_scores')
+                .select('id, participant_id, score')
+                .in('participant_id', participantIds)
+            : Promise.resolve({ data: null, error: null }),
+        ])
+
+        if (cancelado) return
+        if (scoresRes.error) throw scoresRes.error
+        if (judgeRes.error) throw judgeRes.error
+
         const scoresMap = new Map<string, ScoreEntry>()
-        if (challengeIds.length > 0) {
-          const { data: scoresData, error: scoresError } = await supabase
-            .from('challenge_scores')
-            .select('id, challenge_id, participant_id, score')
-            .in('challenge_id', challengeIds)
-
-          if (cancelado) return
-          if (scoresError) throw scoresError
-
-          for (const row of scoresData ?? []) {
-            scoresMap.set(row.id, {
-              id: row.id,
-              challenge_id: row.challenge_id,
-              participant_id: row.participant_id,
-              score: row.score,
-            })
-          }
+        for (const row of scoresRes.data ?? []) {
+          scoresMap.set(row.id, {
+            id: row.id,
+            challenge_id: row.challenge_id,
+            participant_id: row.participant_id,
+            score: row.score,
+          })
         }
 
-        // 4. Judge scores de la edición (para el total combinado del leaderboard).
-        //    Se filtran por participant_id (cada participante pertenece a una sola
-        //    edición). RLS "judge_scores_select_admin" permite al encargado leerlos.
         const judgeMap = new Map<string, JudgeScoreEntry>()
-        const participantIds = (partsData ?? []).map((p) => p.id)
-        if (participantIds.length > 0) {
-          const { data: judgeData, error: judgeError } = await supabase
-            .from('judge_scores')
-            .select('id, participant_id, score')
-            .in('participant_id', participantIds)
-
-          if (cancelado) return
-          if (judgeError) throw judgeError
-
-          for (const row of judgeData ?? []) {
-            judgeMap.set(row.id, {
-              id: row.id,
-              participant_id: row.participant_id,
-              score: row.score,
-            })
-          }
+        for (const row of judgeRes.data ?? []) {
+          judgeMap.set(row.id, {
+            id: row.id,
+            participant_id: row.participant_id,
+            score: row.score,
+          })
         }
 
         if (!cancelado) {

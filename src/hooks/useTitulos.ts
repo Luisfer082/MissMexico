@@ -64,27 +64,30 @@ export function useTitulos(edicionId: string | undefined): UseTitulosResult {
       }
 
       try {
-        const { data: titulosData, error: titulosError } = await supabase
-          .from('titles')
-          .select('*')
-          .eq('edition_id', edicionId)
-          .order('order_num', { ascending: true })
+        // Las tres queries son independientes entre sí → una sola tanda paralela
+        const [
+          { data: titulosData, error: titulosError },
+          { data: asignData, error: asignError },
+          { data: partsData, error: partsError },
+        ] = await Promise.all([
+          supabase
+            .from('titles')
+            .select('*')
+            .eq('edition_id', edicionId)
+            .order('order_num', { ascending: true }),
+          supabase
+            .from('title_assignments')
+            .select('*')
+            .eq('edition_id', edicionId),
+          supabase
+            .from('participants')
+            .select('id, full_name, region, sash_number')
+            .eq('edition_id', edicionId)
+            .order('sash_number', { ascending: true }),
+        ])
         if (cancelado) return
         if (titulosError) throw titulosError
-
-        const { data: asignData, error: asignError } = await supabase
-          .from('title_assignments')
-          .select('*')
-          .eq('edition_id', edicionId)
-        if (cancelado) return
         if (asignError) throw asignError
-
-        const { data: partsData, error: partsError } = await supabase
-          .from('participants')
-          .select('id, full_name, region, sash_number')
-          .eq('edition_id', edicionId)
-          .order('sash_number', { ascending: true })
-        if (cancelado) return
         if (partsError) throw partsError
 
         if (!cancelado) {
