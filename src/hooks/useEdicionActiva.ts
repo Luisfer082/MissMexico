@@ -1,5 +1,11 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
+// Wrapper del edicionSlice que conserva la API original del hook: las páginas
+// consumidoras siguen recibiendo { edicion, loading, error } sin enterarse de
+// que ahora la edición activa vive cacheada en el store (una sola query por
+// sesión en vez de una por navegación).
+
+import { useEffect } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import { useAppStore } from '../stores/useAppStore'
 import type { Tables } from '../types/database'
 
 interface UseEdicionActivaResult {
@@ -9,41 +15,19 @@ interface UseEdicionActivaResult {
 }
 
 export function useEdicionActiva(): UseEdicionActivaResult {
-  const [edicion, setEdicion] = useState<Tables<'editions'> | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const { edicionActiva, edicionLoading, edicionError, cargarEdicionActiva } = useAppStore(
+    useShallow((s) => ({
+      edicionActiva: s.edicionActiva,
+      edicionLoading: s.edicionLoading,
+      edicionError: s.edicionError,
+      cargarEdicionActiva: s.cargarEdicionActiva,
+    })),
+  )
 
+  // Dispara la carga solo si el caché está vacío (dedupe dentro del slice)
   useEffect(() => {
-    const fetchEdicion = async () => {
-      setLoading(true)
-      setError(null)
+    void cargarEdicionActiva()
+  }, [cargarEdicionActiva])
 
-      try {
-        const { data, error: supabaseError } = await supabase
-          .from('editions')
-          .select('*')
-          .eq('is_active', true)
-          .single()
-
-        if (supabaseError) {
-          // PGRST116 = no rows found — no es error crítico, simplemente no hay edición activa
-          if (supabaseError.code === 'PGRST116') {
-            setEdicion(null)
-          } else {
-            setError(supabaseError.message)
-          }
-        } else {
-          setEdicion(data)
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error desconocido')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    void fetchEdicion()
-  }, [])
-
-  return { edicion, loading, error }
+  return { edicion: edicionActiva, loading: edicionLoading, error: edicionError }
 }

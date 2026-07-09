@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase'
+import { useAppStore } from '../../stores/useAppStore'
 import EdicionModal from '../../components/EdicionModal'
 import TitulosModal from '../../components/TitulosModal'
 import ConfirmDialog from '../../components/ConfirmDialog'
@@ -9,6 +10,8 @@ import type { Tables } from '../../types/database'
 type Edicion = Tables<'editions'>
 
 function EdicionesPage() {
+  // Invalida el caché de la edición activa del store tras mutaciones
+  const refrescarEdicionActiva = useAppStore((s) => s.refrescarEdicionActiva)
   const [ediciones, setEdiciones] = useState<Edicion[]>([])
   // Inicia en true para mostrar spinner inmediato en la primera carga
   const [loading, setLoading] = useState(true)
@@ -65,6 +68,7 @@ function EdicionesPage() {
         if (errOn) throw errOn
 
         setRecargar((n) => n + 1)
+        void refrescarEdicionActiva()
       })(),
       {
         loading: 'Activando edición...',
@@ -114,6 +118,8 @@ function EdicionesPage() {
 
   const handleGuardado = () => {
     setRecargar((n) => n + 1)
+    // Editar puede renombrar la edición activa: refrescar el caché del store
+    void refrescarEdicionActiva()
   }
 
   return (
