@@ -19,6 +19,7 @@ const JuezLayout = lazy(() => import('../layouts/JuezLayout'))
 const CalificarPage = lazy(() => import('../pages/juez/CalificarPage'))
 const DirectorLayout = lazy(() => import('../layouts/DirectorLayout'))
 const PromediosPage = lazy(() => import('../pages/director/PromediosPage'))
+const RankingPage = lazy(() => import('../pages/director/RankingPage'))
 const TitulosPage = lazy(() => import('../pages/director/TitulosPage'))
 const AnunciadorLayout = lazy(() => import('../layouts/AnunciadorLayout'))
 const ProyeccionPage = lazy(() => import('../pages/anunciador/ProyeccionPage'))
@@ -82,6 +83,7 @@ function AppRouter() {
             }
           >
             <Route index element={<PromediosPage />} />
+            <Route path="ranking" element={<RankingPage />} />
             <Route path="titulos" element={<TitulosPage />} />
           </Route>
 

@@ -1,8 +1,12 @@
-// Pantalla Títulos del director (Fase 6, pasos 4-5): asignación drag-and-drop
-// de los 8 títulos (6 títulos + 2 finalistas). El pool muestra a todas las
-// participantes de la edición aún sin título; soltar sobre un slot asigna (o
-// reemplaza). La aprobación exige confirmación doble y es IRREVERSIBLE
-// (trigger prevent_mutation_when_approved en BD).
+// Pantalla Títulos del director (§5.5, paso 3 — rework de Fase 6).
+//
+// Asignación drag-and-drop de los 8 slots (6 títulos + 2 finalistas) sobre el
+// BORRADOR del directorSlice: arrastrar y quitar no van a la BD, se persisten
+// con Guardar (barra del layout). Antes cada movimiento era un round-trip y la
+// selección se perdía al cambiar de pestaña.
+//
+// El pool muestra a todas las participantes de la edición aún sin título
+// (pendiente en §5.1: decidir si se restringe a las finalistas de la última etapa).
 
 import { useMemo, useState } from 'react'
 import {
@@ -14,24 +18,20 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { useEdicionActiva } from '../../hooks/useEdicionActiva'
-import { useTitulos } from '../../hooks/useTitulos'
-import type { ParticipanteTitulos } from '../../hooks/useTitulos'
+import { useAppStore } from '../../stores/useAppStore'
+import type { ParticipanteDirector } from '../../stores/slices/directorSlice'
 import SlotTitulo from '../../components/SlotTitulo'
-import ConfirmDialog from '../../components/ConfirmDialog'
 import { normalizar } from '../../utils/texto'
 
 // ─── Tarjeta arrastrable del pool ─────────────────────────────────────────────
 
 interface TarjetaProps {
-  participante: ParticipanteTitulos
-  disabled: boolean
+  participante: ParticipanteDirector
 }
 
-function TarjetaParticipante({ participante, disabled }: TarjetaProps) {
+function TarjetaParticipante({ participante }: TarjetaProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: participante.id,
-    disabled,
   })
 
   return (
@@ -41,7 +41,7 @@ function TarjetaParticipante({ participante, disabled }: TarjetaProps) {
       {...attributes}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={`flex items-center gap-2.5 px-3 py-2 bg-white rounded-lg border border-gray-200
-        ${disabled ? 'opacity-50' : 'cursor-grab active:cursor-grabbing touch-none'}
+        cursor-grab active:cursor-grabbing touch-none
         ${isDragging ? 'z-10 relative shadow-lg ring-2 ring-brand-400' : ''}`}
     >
       <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex-shrink-0">
@@ -58,31 +58,30 @@ function TarjetaParticipante({ participante, disabled }: TarjetaProps) {
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 function TitulosPage() {
-  const { edicion, loading: loadingEdicion, error: errorEdicion } = useEdicionActiva()
-  const { titulos, asignaciones, participantes, loading, error, recargar, asignar, quitar, aprobar } =
-    useTitulos(edicion?.id)
-  const [busqueda, setBusqueda] = useState('')
-  // Confirmación doble de la aprobación (regla 7): dos modales encadenados.
-  const [confirmacion, setConfirmacion] = useState<'ninguna' | 'primera' | 'segunda'>('ninguna')
+  const loading = useAppStore((s) => s.directorLoading)
+  const error = useAppStore((s) => s.directorError)
+  const titulos = useAppStore((s) => s.directorTitulos)
+  const participantes = useAppStore((s) => s.directorParticipantes)
+  const asignaciones = useAppStore((s) => s.directorAsignaciones)
+  const asignar = useAppStore((s) => s.asignarTitulo)
+  const quitar = useAppStore((s) => s.quitarTitulo)
+  const recargar = useAppStore((s) => s.recargarDirector)
 
-  // Distancia mínima para iniciar el drag: permite que los taps/clicks dentro
-  // de la tarjeta no arranquen un arrastre accidental (también en touch).
+  const [busqueda, setBusqueda] = useState('')
+
+  // Distancia mínima para iniciar el drag: evita que un tap dentro de la
+  // tarjeta arranque un arrastre accidental (también en touch).
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
 
-  const participantesPorId = useMemo(
-    () => new Map(participantes.map((p) => [p.id, p])),
-    [participantes],
-  )
+  const porId = useMemo(() => new Map(participantes.map((p) => [p.id, p])), [participantes])
 
-  const asignacionPorTitulo = useMemo(
-    () => new Map(asignaciones.map((a) => [a.title_id, a])),
+  const ocupadas = useMemo(
+    () => new Set(Object.values(asignaciones).filter((id): id is string => id !== null)),
     [asignaciones],
   )
 
-  // Pool: participantes sin título asignado, con filtro de búsqueda
   const pool = useMemo(() => {
-    const asignadas = new Set(asignaciones.map((a) => a.participant_id))
-    const libres = participantes.filter((p) => !asignadas.has(p.id))
+    const libres = participantes.filter((p) => !ocupadas.has(p.id))
     const q = normalizar(busqueda.trim())
     if (q === '') return libres
     return libres.filter(
@@ -91,25 +90,16 @@ function TitulosPage() {
         normalizar(p.region).includes(q) ||
         p.sash_number.toString() === q,
     )
-  }, [participantes, asignaciones, busqueda])
-
-  const todasAprobadas = asignaciones.length > 0 && asignaciones.every((a) => a.approved)
-  // El botón de aprobar solo se habilita con TODOS los títulos asignados (paso 5).
-  const todosAsignados = titulos.length > 0 && asignaciones.length === titulos.length
+  }, [participantes, ocupadas, busqueda])
 
   const handleDragEnd = (e: DragEndEvent) => {
     if (!e.over) return
-    void asignar(String(e.over.id), String(e.active.id))
-  }
-
-  const confirmarAprobacion = () => {
-    setConfirmacion('ninguna')
-    void aprobar()
+    asignar(String(e.over.id), String(e.active.id))
   }
 
   // ─── Estados de carga / error / vacío ─────────────────────────────────────
 
-  if (loadingEdicion || loading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
         <div className="w-7 h-7 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
@@ -117,28 +107,17 @@ function TitulosPage() {
     )
   }
 
-  if (errorEdicion || error) {
+  if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
         <p className="text-red-600 font-medium">Error al cargar los títulos</p>
-        <p className="text-slate-500 text-sm">{errorEdicion ?? error}</p>
+        <p className="text-slate-500 text-sm">{error}</p>
         <button
-          onClick={recargar}
+          onClick={() => void recargar()}
           className="px-4 py-1.5 rounded-md bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-colors"
         >
           Reintentar
         </button>
-      </div>
-    )
-  }
-
-  if (!edicion) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 text-center">
-        <p className="text-slate-700 font-medium">No hay edición activa</p>
-        <p className="text-slate-400 text-sm mt-1">
-          El encargado debe activar una edición para asignar títulos.
-        </p>
       </div>
     )
   }
@@ -158,40 +137,12 @@ function TitulosPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-4 mb-5">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Títulos</h1>
-          <p className="text-slate-500 text-sm mt-1">
-            {edicion.name} — {asignaciones.length} de {titulos.length} asignados
-          </p>
-        </div>
-        {!todasAprobadas && (
-          <div className="text-right">
-            <button
-              type="button"
-              onClick={() => setConfirmacion('primera')}
-              disabled={!todosAsignados}
-              className="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium
-                hover:bg-brand-700 transition-colors focus:outline-none focus:ring-2
-                focus:ring-brand-500 focus:ring-offset-2
-                disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              Aprobar asignaciones
-            </button>
-            {!todosAsignados && (
-              <p className="text-xs text-slate-400 mt-1.5">
-                Asigna los {titulos.length} títulos para poder aprobar.
-              </p>
-            )}
-          </div>
-        )}
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold text-slate-900">Títulos</h1>
+        <p className="text-slate-500 text-sm mt-1">
+          {ocupadas.size} de {titulos.length} asignados
+        </p>
       </div>
-
-      {todasAprobadas && (
-        <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          Las asignaciones están <strong>aprobadas</strong> y son definitivas.
-        </div>
-      )}
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="grid gap-6 lg:grid-cols-[minmax(16rem,1fr)_1.5fr] items-start">
@@ -219,7 +170,7 @@ function TitulosPage() {
             ) : (
               <ul className="space-y-2 max-h-[32rem] overflow-y-auto pr-1">
                 {pool.map((p) => (
-                  <TarjetaParticipante key={p.id} participante={p} disabled={todasAprobadas} />
+                  <TarjetaParticipante key={p.id} participante={p} />
                 ))}
               </ul>
             )}
@@ -228,18 +179,13 @@ function TitulosPage() {
           {/* Slots de títulos */}
           <section className="grid gap-3 sm:grid-cols-2">
             {titulos.map((t) => {
-              const asignacion = asignacionPorTitulo.get(t.id) ?? null
+              const participanteId = asignaciones[t.id] ?? null
               return (
                 <SlotTitulo
                   key={t.id}
                   titulo={t}
-                  participante={
-                    asignacion ? (participantesPorId.get(asignacion.participant_id) ?? null) : null
-                  }
-                  aprobado={asignacion?.approved ?? false}
-                  onQuitar={() => {
-                    if (asignacion) void quitar(asignacion.id)
-                  }}
+                  participante={participanteId ? (porId.get(participanteId) ?? null) : null}
+                  onQuitar={() => quitar(t.id)}
                 />
               )
             })}
@@ -250,29 +196,8 @@ function TitulosPage() {
       <p className="text-xs text-slate-400 mt-4">
         Arrastra una participante del pool a un título para asignarla. Soltar sobre un título
         ocupado reemplaza a la participante anterior. Cada participante puede tener un solo título.
+        Los cambios no se guardan hasta que pulses Guardar.
       </p>
-
-      {/* Confirmación doble (regla 7): la aprobación es irreversible en BD */}
-      {confirmacion === 'primera' && (
-        <ConfirmDialog
-          titulo="¿Aprobar las asignaciones?"
-          mensaje={`Se aprobarán los ${titulos.length} títulos de ${edicion.name}. Una vez aprobadas, las asignaciones quedan congeladas y NO se pueden modificar ni quitar.`}
-          textoConfirmar="Continuar"
-          onConfirmar={() => setConfirmacion('segunda')}
-          onCancelar={() => setConfirmacion('ninguna')}
-        />
-      )}
-      {confirmacion === 'segunda' && (
-        <ConfirmDialog
-          titulo="Esta acción es irreversible"
-          mensaje="Confirmación final: al aprobar, la base de datos bloquea cualquier cambio a los títulos de forma permanente. No hay manera de deshacerlo. ¿Aprobar definitivamente?"
-          textoConfirmar="Sí, aprobar definitivamente"
-          textoCancelar="No, volver"
-          peligro
-          onConfirmar={confirmarAprobacion}
-          onCancelar={() => setConfirmacion('ninguna')}
-        />
-      )}
     </div>
   )
 }

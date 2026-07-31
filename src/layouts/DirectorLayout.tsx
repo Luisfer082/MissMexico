@@ -1,14 +1,51 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../stores/useAppStore'
+import { useEdicionActiva } from '../hooks/useEdicionActiva'
+import BarraGuardado from '../components/BarraGuardado'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 // Layout del módulo Director. Header oscuro estilo juez (opera en tablet o
-// laptop a pantalla completa, sin sidebar) + tabs para sus dos vistas:
-// Promedios (read-only) y Títulos (drag-and-drop + aprobación).
+// laptop a pantalla completa, sin sidebar) + tabs para sus tres vistas:
+// Promedios (read-only), Ranking (manual, drag) y Títulos (drag + envío).
+//
+// El layout es también quien carga el borrador del director (una sola vez para
+// las tres pestañas) y quien monta la barra de "cambios sin guardar" y la
+// guardia de navegación.
 function DirectorLayout() {
   const navigate = useNavigate()
   const profile = useAppStore((s) => s.profile)
   const signOut = useAppStore((s) => s.signOut)
+  const { edicion } = useEdicionActiva()
+  const cargarDirector = useAppStore((s) => s.cargarDirector)
+  const hayCambios = useAppStore((s) => s.hayCambiosSinGuardar)
+
+  // Destino al que se quiere navegar mientras hay cambios sin guardar.
+  const [destinoPendiente, setDestinoPendiente] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (edicion?.id) void cargarDirector(edicion.id)
+  }, [edicion?.id, cargarDirector])
+
+  // Guardia ante recarga / cierre de pestaña.
+  useEffect(() => {
+    if (!hayCambios) return
+    const handler = (e: BeforeUnloadEvent) => e.preventDefault()
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [hayCambios])
+
+  // Guardia ante navegación interna. No se usa useBlocker de react-router
+  // porque exige un data router (createBrowserRouter) y la app monta
+  // <BrowserRouter> + <Routes>; migrar eso queda fuera de alcance. Como las
+  // únicas salidas del módulo son estas tabs y el botón Salir, basta con
+  // interceptarlas aquí.
+  const navegarConGuardia = (destino: string) => (e: React.MouseEvent) => {
+    if (!hayCambios) return
+    e.preventDefault()
+    setDestinoPendiente(destino)
+  }
 
   const handleSignOut = async () => {
     await toast.promise(signOut(), {
@@ -17,6 +54,16 @@ function DirectorLayout() {
       error: 'Error al cerrar sesión',
     })
     navigate('/login', { replace: true })
+  }
+
+  const confirmarSalida = () => {
+    const destino = destinoPendiente
+    setDestinoPendiente(null)
+    if (destino === '/login') {
+      void handleSignOut()
+    } else if (destino) {
+      navigate(destino)
+    }
   }
 
   const claseTab = ({ isActive }: { isActive: boolean }) =>
@@ -45,16 +92,33 @@ function DirectorLayout() {
           </div>
 
           <nav className="flex items-center gap-1">
-            <NavLink to="/director" end className={claseTab}>
+            <NavLink to="/director" end className={claseTab} onClick={navegarConGuardia('/director')}>
               Promedios
             </NavLink>
-            <NavLink to="/director/titulos" className={claseTab}>
+            <NavLink
+              to="/director/ranking"
+              className={claseTab}
+              onClick={navegarConGuardia('/director/ranking')}
+            >
+              Ranking
+            </NavLink>
+            <NavLink
+              to="/director/titulos"
+              className={claseTab}
+              onClick={navegarConGuardia('/director/titulos')}
+            >
               Títulos
             </NavLink>
           </nav>
 
           <button
-            onClick={() => void handleSignOut()}
+            onClick={() => {
+              if (hayCambios) {
+                setDestinoPendiente('/login')
+                return
+              }
+              void handleSignOut()
+            }}
             className="flex items-center gap-2 px-3 min-h-[44px] text-slate-300 hover:text-white
               hover:bg-slate-800 rounded-lg text-sm font-medium transition-colors"
           >
@@ -70,7 +134,20 @@ function DirectorLayout() {
       {/* Contenido */}
       <main className="max-w-5xl mx-auto px-4 py-6">
         <Outlet />
+        <BarraGuardado />
       </main>
+
+      {destinoPendiente !== null && (
+        <ConfirmDialog
+          titulo="Tienes cambios sin guardar"
+          mensaje="Si sales ahora se perderán el ranking y las asignaciones que no hayas guardado. ¿Salir de todos modos?"
+          textoConfirmar="Salir sin guardar"
+          textoCancelar="Seguir editando"
+          peligro
+          onConfirmar={confirmarSalida}
+          onCancelar={() => setDestinoPendiente(null)}
+        />
+      )}
     </div>
   )
 }
