@@ -3,21 +3,56 @@ import { useShallow } from 'zustand/react/shallow'
 import { useAppStore } from '../../stores/useAppStore'
 import ConfirmDialog from '../../components/ConfirmDialog'
 
-// Pantalla de Control del Anunciador (Fase 7 — v1). El operador revela los
-// títulos uno por uno con un botón grande. La lista muestra el estado de cada
-// título (revelado / pendiente). "Reiniciar" vuelve el show a cero, con
-// confirmación (es una acción visible en vivo).
+// Pantalla de Control del Anunciador. El operador revela los títulos uno por
+// uno con un botón grande. La lista muestra el estado de cada título (revelado
+// / pendiente). "Reiniciar" vuelve el show a cero, con confirmación (es una
+// acción visible en vivo).
 function ControlPage() {
-  const { titulos, reveladosCount, revelarSiguiente, reiniciar } = useAppStore(
-    useShallow((s) => ({
-      titulos: s.anuncioTitulos,
-      reveladosCount: s.anuncioReveladosCount,
-      revelarSiguiente: s.revelarSiguiente,
-      reiniciar: s.reiniciarAnuncio,
-    })),
-  )
+  const { titulos, reveladosCount, revelarSiguiente, reiniciar, loading, error, publicado } =
+    useAppStore(
+      useShallow((s) => ({
+        titulos: s.anuncioTitulos,
+        reveladosCount: s.anuncioReveladosCount,
+        revelarSiguiente: s.revelarSiguiente,
+        reiniciar: s.reiniciarAnuncio,
+        loading: s.anuncioLoading,
+        error: s.anuncioError,
+        publicado: s.anuncioPublicado,
+      })),
+    )
 
   const [confirmarReinicio, setConfirmarReinicio] = useState(false)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="w-7 h-7 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center gap-2">
+        <p className="text-red-600 font-medium">Error al cargar los títulos</p>
+        <p className="text-slate-500 text-sm">{error}</p>
+      </div>
+    )
+  }
+
+  // Sin títulos: o el director todavía no los envió, o los retiró para corregir.
+  if (titulos.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <p className="text-slate-700 font-medium">Todavía no hay títulos que proyectar</p>
+        <p className="text-slate-400 text-sm mt-1">
+          {publicado
+            ? 'La edición está enviada pero no tiene títulos asignados.'
+            : 'El director aún no ha enviado los resultados.'}
+        </p>
+      </div>
+    )
+  }
 
   const total = titulos.length
   const terminado = reveladosCount >= total

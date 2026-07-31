@@ -1,15 +1,26 @@
+import { useEffect } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../stores/useAppStore'
+import { useEdicionActiva } from '../hooks/useEdicionActiva'
 
-// Layout del módulo Anunciador (Fase 7 — v1). Header oscuro estilo director +
-// tabs para sus dos vistas: Proyección (lo que ve el escenario) y Control (donde
-// el operador revela los títulos uno por uno). v1 es "misma pantalla": el
-// operador alterna entre ambas pestañas; el estado vive en memoria (Zustand).
+// Layout del módulo Anunciador. Header oscuro estilo director + tabs para sus
+// dos vistas: Proyección (lo que ve el escenario) y Control (donde el operador
+// revela los títulos uno por uno). Es "misma pantalla": el operador alterna
+// entre ambas pestañas y el estado de revelado vive en memoria (Zustand).
+//
+// Carga aquí los títulos de la edición activa, una sola vez para las dos
+// pestañas.
 function AnunciadorLayout() {
   const navigate = useNavigate()
   const profile = useAppStore((s) => s.profile)
   const signOut = useAppStore((s) => s.signOut)
+  const { edicion } = useEdicionActiva()
+  const cargarAnuncio = useAppStore((s) => s.cargarAnuncio)
+
+  useEffect(() => {
+    if (edicion?.id) void cargarAnuncio(edicion.id)
+  }, [edicion?.id, cargarAnuncio])
 
   const handleSignOut = async () => {
     await toast.promise(signOut(), {
