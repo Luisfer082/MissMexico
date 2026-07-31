@@ -149,6 +149,38 @@ export type Database = {
           },
         ]
       }
+      edition_publications: {
+        Row: {
+          edition_id: string
+          published: boolean
+          published_at: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          edition_id: string
+          published?: boolean
+          published_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          edition_id?: string
+          published?: boolean
+          published_at?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edition_publications_edition_id_fkey"
+            columns: ["edition_id"]
+            isOneToOne: true
+            referencedRelation: "editions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       editions: {
         Row: {
           created_at: string
@@ -318,6 +350,48 @@ export type Database = {
             columns: ["stage_id"]
             isOneToOne: false
             referencedRelation: "stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manual_rankings: {
+        Row: {
+          edition_id: string
+          id: string
+          participant_id: string
+          position: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          edition_id: string
+          id?: string
+          participant_id: string
+          position: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          edition_id?: string
+          id?: string
+          participant_id?: string
+          position?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_rankings_edition_id_fkey"
+            columns: ["edition_id"]
+            isOneToOne: false
+            referencedRelation: "editions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manual_rankings_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "participants"
             referencedColumns: ["id"]
           },
         ]
