@@ -1,5 +1,6 @@
 // Seed del catálogo de títulos de una edición (Fase 6, paso 2).
-// Nombres genéricos acordados con Luis (2026-07-07): se renombran después
+// Catálogo real definido por Luis (2026-07-30, §5.5): 5 nombres
+// internacionales + un slot 6 genérico + las 2 finalistas. Se renombran
 // desde el modal "Títulos" del módulo Encargado si hace falta.
 
 import { supabase } from '../lib/supabase'
@@ -11,11 +12,11 @@ export interface TituloEstandar {
 }
 
 export const TITULOS_ESTANDAR: TituloEstandar[] = [
-  { name: 'Ganadora', order_num: 1, kind: 'titulo' },
-  { name: 'Título 2', order_num: 2, kind: 'titulo' },
-  { name: 'Título 3', order_num: 3, kind: 'titulo' },
-  { name: 'Título 4', order_num: 4, kind: 'titulo' },
-  { name: 'Título 5', order_num: 5, kind: 'titulo' },
+  { name: 'Miss México', order_num: 1, kind: 'titulo' },
+  { name: 'Miss México Supranational', order_num: 2, kind: 'titulo' },
+  { name: 'Miss México Cosmo', order_num: 3, kind: 'titulo' },
+  { name: 'Miss México Elite', order_num: 4, kind: 'titulo' },
+  { name: 'Miss México Top Model of the World', order_num: 5, kind: 'titulo' },
   { name: 'Título 6', order_num: 6, kind: 'titulo' },
   { name: 'Primera finalista', order_num: 7, kind: 'finalista' },
   { name: 'Segunda finalista', order_num: 8, kind: 'finalista' },
