@@ -20,7 +20,9 @@ const CalificarPage = lazy(() => import('../pages/juez/CalificarPage'))
 const DirectorLayout = lazy(() => import('../layouts/DirectorLayout'))
 const PromediosPage = lazy(() => import('../pages/director/PromediosPage'))
 const TitulosPage = lazy(() => import('../pages/director/TitulosPage'))
-const AnunciadorPlaceholder = lazy(() => import('../pages/anunciador/AnunciadorPlaceholder'))
+const AnunciadorLayout = lazy(() => import('../layouts/AnunciadorLayout'))
+const ProyeccionPage = lazy(() => import('../pages/anunciador/ProyeccionPage'))
+const ControlPage = lazy(() => import('../pages/anunciador/ControlPage'))
 
 // Fallback mientras se descarga el chunk del módulo
 function CargandoModulo() {
@@ -85,13 +87,16 @@ function AppRouter() {
 
           {/* Anunciador — Fase 7 */}
           <Route
-            path="/anunciador/*"
+            path="/anunciador"
             element={
               <RequireRole roles={['anunciador']}>
-                <AnunciadorPlaceholder />
+                <AnunciadorLayout />
               </RequireRole>
             }
-          />
+          >
+            <Route index element={<ProyeccionPage />} />
+            <Route path="control" element={<ControlPage />} />
+          </Route>
 
           {/* Raíz y catch-all → login */}
           <Route path="/" element={<Navigate to="/login" replace />} />
