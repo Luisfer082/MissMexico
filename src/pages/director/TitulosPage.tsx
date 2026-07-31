@@ -9,6 +9,7 @@
 // (pendiente en §5.1: decidir si se restringe a las finalistas de la última etapa).
 
 import { useMemo, useState } from 'react'
+import toast from 'react-hot-toast'
 import {
   DndContext,
   PointerSensor,
@@ -66,6 +67,9 @@ function TitulosPage() {
   const asignar = useAppStore((s) => s.asignarTitulo)
   const quitar = useAppStore((s) => s.quitarTitulo)
   const recargar = useAppStore((s) => s.recargarDirector)
+  const publicado = useAppStore((s) => s.directorPublicado)
+  const publicar = useAppStore((s) => s.publicarDirector)
+  const hayCambios = useAppStore((s) => s.hayCambiosSinGuardar)
 
   const [busqueda, setBusqueda] = useState('')
 
@@ -95,6 +99,23 @@ function TitulosPage() {
   const handleDragEnd = (e: DragEndEvent) => {
     if (!e.over) return
     asignar(String(e.over.id), String(e.active.id))
+  }
+
+  // Envío al anunciador: REVERSIBLE, sin confirmación doble. Lo irreversible en
+  // este sistema es solo el cierre de etapa (regla 7); aquí se puede retirar,
+  // corregir y volver a enviar. Se exige tener todo asignado y guardado para no
+  // proyectar un borrador a medias.
+  const todosAsignados = titulos.length > 0 && ocupadas.size === titulos.length
+  const puedeEnviar = todosAsignados && !hayCambios
+
+  const handlePublicar = (valor: boolean) => {
+    void toast.promise(publicar(valor), {
+      loading: valor ? 'Enviando al anunciador...' : 'Retirando...',
+      success: valor
+        ? 'Enviado. El anunciador ya puede proyectar.'
+        : 'Retirado. El anunciador dejó de ver los títulos.',
+      error: (err: unknown) => (err instanceof Error ? err.message : 'Error al actualizar el envío'),
+    })
   }
 
   // ─── Estados de carga / error / vacío ─────────────────────────────────────
@@ -137,12 +158,54 @@ function TitulosPage() {
 
   return (
     <div>
-      <div className="mb-5">
-        <h1 className="text-2xl font-bold text-slate-900">Títulos</h1>
-        <p className="text-slate-500 text-sm mt-1">
-          {ocupadas.size} de {titulos.length} asignados
-        </p>
+      <div className="flex items-start justify-between gap-4 mb-5">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Títulos</h1>
+          <p className="text-slate-500 text-sm mt-1">
+            {ocupadas.size} de {titulos.length} asignados
+          </p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          {publicado ? (
+            <button
+              type="button"
+              onClick={() => handlePublicar(false)}
+              className="px-4 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-900
+                text-sm font-medium hover:bg-amber-100 transition-colors focus:outline-none
+                focus:ring-2 focus:ring-amber-400 focus:ring-offset-2"
+            >
+              Retirar del anunciador
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => handlePublicar(true)}
+              disabled={!puedeEnviar}
+              className="px-4 py-2 rounded-lg bg-brand-600 text-white text-sm font-medium
+                hover:bg-brand-700 transition-colors focus:outline-none focus:ring-2
+                focus:ring-brand-500 focus:ring-offset-2
+                disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              Enviar al anunciador
+            </button>
+          )}
+          {!publicado && !todosAsignados && (
+            <p className="text-xs text-slate-400 mt-1.5">
+              Asigna los {titulos.length} títulos para poder enviar.
+            </p>
+          )}
+          {!publicado && todosAsignados && hayCambios && (
+            <p className="text-xs text-slate-400 mt-1.5">Guarda los cambios para poder enviar.</p>
+          )}
+        </div>
       </div>
+
+      {publicado && (
+        <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          Los títulos están <strong>enviados al anunciador</strong>, que ya puede proyectarlos.
+          Puedes retirarlos en cualquier momento: nada aquí es irreversible.
+        </div>
+      )}
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="grid gap-6 lg:grid-cols-[minmax(16rem,1fr)_1.5fr] items-start">
