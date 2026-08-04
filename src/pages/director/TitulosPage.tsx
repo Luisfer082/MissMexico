@@ -1,6 +1,6 @@
 // Pantalla Títulos del director (§5.5, paso 3 — rework de Fase 6).
 //
-// Asignación drag-and-drop de los 8 slots (6 títulos + 2 finalistas) sobre el
+// Asignación drag-and-drop de los 7 slots (5 títulos + 2 finalistas) sobre el
 // BORRADOR del directorSlice: arrastrar y quitar no van a la BD, se persisten
 // con Guardar (barra del layout). Antes cada movimiento era un round-trip y la
 // selección se perdía al cambiar de pestaña.
