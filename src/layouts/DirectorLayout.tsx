@@ -21,8 +21,8 @@ function DirectorLayout() {
   const cargarDirector = useAppStore((s) => s.cargarDirector)
   const hayCambios = useAppStore((s) => s.hayCambiosSinGuardar)
 
-  // Destino al que se quiere navegar mientras hay cambios sin guardar.
-  const [destinoPendiente, setDestinoPendiente] = useState<string | null>(null)
+  // Se intentó cerrar sesión con cambios sin guardar: pide confirmación.
+  const [confirmandoSalida, setConfirmandoSalida] = useState(false)
 
   useEffect(() => {
     if (edicion?.id) void cargarDirector(edicion.id)
@@ -36,16 +36,11 @@ function DirectorLayout() {
     return () => window.removeEventListener('beforeunload', handler)
   }, [hayCambios])
 
-  // Guardia ante navegación interna. No se usa useBlocker de react-router
-  // porque exige un data router (createBrowserRouter) y la app monta
-  // <BrowserRouter> + <Routes>; migrar eso queda fuera de alcance. Como las
-  // únicas salidas del módulo son estas tabs y el botón Salir, basta con
-  // interceptarlas aquí.
-  const navegarConGuardia = (destino: string) => (e: React.MouseEvent) => {
-    if (!hayCambios) return
-    e.preventDefault()
-    setDestinoPendiente(destino)
-  }
+  // La guardia SOLO cubre las salidas del módulo (botón Salir y recarga). Entre
+  // las tabs no aplica: el borrador vive en el store, el layout no se desmonta
+  // y no se pierde nada — avisar ahí solo confundía. No se usa useBlocker de
+  // react-router porque exige un data router (createBrowserRouter) y la app
+  // monta <BrowserRouter> + <Routes>; migrar eso queda fuera de alcance.
 
   const handleSignOut = async () => {
     await toast.promise(signOut(), {
@@ -57,13 +52,8 @@ function DirectorLayout() {
   }
 
   const confirmarSalida = () => {
-    const destino = destinoPendiente
-    setDestinoPendiente(null)
-    if (destino === '/login') {
-      void handleSignOut()
-    } else if (destino) {
-      navigate(destino)
-    }
+    setConfirmandoSalida(false)
+    void handleSignOut()
   }
 
   const claseTab = ({ isActive }: { isActive: boolean }) =>
@@ -92,21 +82,13 @@ function DirectorLayout() {
           </div>
 
           <nav className="flex items-center gap-1">
-            <NavLink to="/director" end className={claseTab} onClick={navegarConGuardia('/director')}>
+            <NavLink to="/director" end className={claseTab}>
               Promedios
             </NavLink>
-            <NavLink
-              to="/director/ranking"
-              className={claseTab}
-              onClick={navegarConGuardia('/director/ranking')}
-            >
+            <NavLink to="/director/ranking" className={claseTab}>
               Ranking
             </NavLink>
-            <NavLink
-              to="/director/titulos"
-              className={claseTab}
-              onClick={navegarConGuardia('/director/titulos')}
-            >
+            <NavLink to="/director/titulos" className={claseTab}>
               Títulos
             </NavLink>
           </nav>
@@ -114,7 +96,7 @@ function DirectorLayout() {
           <button
             onClick={() => {
               if (hayCambios) {
-                setDestinoPendiente('/login')
+                setConfirmandoSalida(true)
                 return
               }
               void handleSignOut()
@@ -137,15 +119,15 @@ function DirectorLayout() {
         <BarraGuardado />
       </main>
 
-      {destinoPendiente !== null && (
+      {confirmandoSalida && (
         <ConfirmDialog
           titulo="Tienes cambios sin guardar"
-          mensaje="Si sales ahora se perderán el ranking y las asignaciones que no hayas guardado. ¿Salir de todos modos?"
+          mensaje="Si cierras sesión ahora se perderán el ranking y las asignaciones que no hayas guardado. ¿Salir de todos modos?"
           textoConfirmar="Salir sin guardar"
           textoCancelar="Seguir editando"
           peligro
           onConfirmar={confirmarSalida}
-          onCancelar={() => setDestinoPendiente(null)}
+          onCancelar={() => setConfirmandoSalida(false)}
         />
       )}
     </div>

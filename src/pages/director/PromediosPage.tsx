@@ -3,9 +3,10 @@
 // por reto) + total de puntos del encargado en la edición. El orden del
 // ranking lo da el promedio de jueces (desc).
 
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import { usePromediosDirector } from '../../hooks/usePromediosDirector'
+import { useAppStore } from '../../stores/useAppStore'
 
 function formatearPuntaje(n: number): string {
   // Hasta 2 decimales sin ceros sobrantes
@@ -32,11 +33,13 @@ function PromediosPage() {
     edicion?.id,
   )
 
-  // '' = sin selección explícita: rondaEfectiva cae a la primera de la lista.
-  const [rondaSeleccionada, setRondaSeleccionada] = useState<string>('')
+  // La selección vive en el store para compartirse con Ranking y Títulos y
+  // sobrevivir al cambio de pestaña. null = sin elegir: cae a la primera.
+  const rondaSeleccionada = useAppStore((s) => s.directorRondaId)
+  const setRondaSeleccionada = useAppStore((s) => s.setDirectorRonda)
 
   const rondaEfectiva = useMemo(() => {
-    if (rondas.some((r) => r.id === rondaSeleccionada)) return rondaSeleccionada
+    if (rondas.some((r) => r.id === rondaSeleccionada)) return rondaSeleccionada ?? ''
     return rondas[0]?.id ?? ''
   }, [rondas, rondaSeleccionada])
 

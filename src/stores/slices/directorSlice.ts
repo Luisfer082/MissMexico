@@ -50,6 +50,14 @@ export interface DirectorState {
   directorGuardando: boolean
   hayCambiosSinGuardar: boolean
 
+  /**
+   * Ronda de jueces seleccionada, compartida por las tres pestañas. Vive aquí
+   * y no en useState de la página porque cada pestaña desmonta a la otra y la
+   * selección se perdía al navegar. null = sin elegir (cae a la primera).
+   */
+  directorRondaId: string | null
+  setDirectorRonda: (rondaId: string) => void
+
   /** Carga la edición en el borrador. No refetchea si ya es la misma. */
   cargarDirector: (edicionId: string) => Promise<void>
   /** Fuerza la recarga descartando el borrador. */
@@ -66,6 +74,8 @@ export interface DirectorState {
   guardarDirector: () => Promise<void>
   /** Publica/retira las asignaciones para el anunciador. Reversible. */
   publicarDirector: (publicado: boolean) => Promise<void>
+  /** Reordena el ranking completo (p. ej. "ordenar por promedio de la ronda"). */
+  reemplazarRanking: (ids: string[]) => void
 }
 
 // ─── Helpers de comparación ───────────────────────────────────────────────────
@@ -100,6 +110,9 @@ export const createDirectorSlice: StateCreator<DirectorState> = (set, get) => {
   }
 
   const fetchDirector = async (edicionId: string) => {
+    // Las rondas pertenecen a una edición: si cambia, la selección deja de ser
+    // válida. Un recargar sobre la misma edición sí la conserva.
+    const cambioEdicion = get().directorEdicionId !== edicionId
     set({ directorLoading: true, directorError: null })
 
     try {
@@ -170,6 +183,7 @@ export const createDirectorSlice: StateCreator<DirectorState> = (set, get) => {
         directorPublicado: publicacion?.published ?? false,
         hayCambiosSinGuardar: false,
         directorLoading: false,
+        ...(cambioEdicion ? { directorRondaId: null } : {}),
       })
     } catch (err) {
       set({
@@ -194,6 +208,9 @@ export const createDirectorSlice: StateCreator<DirectorState> = (set, get) => {
     directorPublicado: false,
     directorGuardando: false,
     hayCambiosSinGuardar: false,
+    directorRondaId: null,
+
+    setDirectorRonda: (rondaId) => set({ directorRondaId: rondaId }),
 
     cargarDirector: async (edicionId) => {
       // Ya cargada: no se refetchea para no pisar el borrador en curso.
@@ -219,6 +236,11 @@ export const createDirectorSlice: StateCreator<DirectorState> = (set, get) => {
       nuevo.splice(desde, 1)
       nuevo.splice(Math.max(0, Math.min(haciaIndice, nuevo.length)), 0, participantId)
       set({ directorRanking: nuevo })
+      marcarCambios()
+    },
+
+    reemplazarRanking: (ids) => {
+      set({ directorRanking: [...ids] })
       marcarCambios()
     },
 
