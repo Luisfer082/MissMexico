@@ -1,17 +1,22 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { ParticipanteDirector } from '../stores/slices/directorSlice'
+import { formatearPuntaje } from '../utils/puntaje'
 
 interface Props {
   participante: ParticipanteDirector
   /** Posición en el ranking (1-based), la que se guarda en manual_rankings. */
   posicion: number
+  /** Promedio de jueces en la ronda seleccionada. null = sin calificaciones. */
+  promedio: number | null
+  /** Suma de los puntos que capturó el encargado en toda la edición. */
+  totalEncargado: number
 }
 
 // Fila arrastrable del ranking manual del director. Usa @dnd-kit/sortable
 // (lista reordenable) a diferencia de los títulos, que son pool → slot fijo
 // y se resuelven con @dnd-kit/core.
-function FilaRanking({ participante, posicion }: Props) {
+function FilaRanking({ participante, posicion, promedio, totalEncargado }: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: participante.id,
   })
@@ -36,6 +41,23 @@ function FilaRanking({ participante, posicion }: Props) {
         <p className="font-medium text-slate-900 text-sm truncate">{participante.full_name}</p>
         <p className="text-slate-400 text-xs truncate">{participante.region}</p>
       </div>
+
+      {/* Puntajes de referencia: no se editan aquí, solo orientan el orden manual */}
+      <div className="flex items-center gap-4 flex-shrink-0 text-right">
+        <div className="w-14">
+          <p className="text-[10px] uppercase tracking-wide text-slate-400 leading-none">Jueces</p>
+          <p className="text-sm font-semibold text-brand-700 tabular-nums leading-tight">
+            {promedio === null ? <span className="text-slate-300">—</span> : formatearPuntaje(promedio)}
+          </p>
+        </div>
+        <div className="w-14">
+          <p className="text-[10px] uppercase tracking-wide text-slate-400 leading-none">Encargado</p>
+          <p className="text-sm font-semibold text-slate-700 tabular-nums leading-tight">
+            {formatearPuntaje(totalEncargado)}
+          </p>
+        </div>
+      </div>
+
       <svg
         className="w-4 h-4 text-slate-300 flex-shrink-0"
         fill="none"

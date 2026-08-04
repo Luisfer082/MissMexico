@@ -7,11 +7,7 @@ import { useMemo } from 'react'
 import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import { usePromediosDirector } from '../../hooks/usePromediosDirector'
 import { useAppStore } from '../../stores/useAppStore'
-
-function formatearPuntaje(n: number): string {
-  // Hasta 2 decimales sin ceros sobrantes
-  return Number(n.toFixed(2)).toString()
-}
+import { formatearPuntaje } from '../../utils/puntaje'
 
 interface FilaPromedio {
   participant_id: string
