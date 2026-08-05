@@ -3,10 +3,18 @@
 // (stage_participants) y las calificaciones previas del propio juez.
 // El aislamiento (regla 5) lo garantiza la RLS: judge_round_judges y
 // judge_scores filtran por judge_id = auth.uid(). Aquí solo pedimos lo nuestro.
+//
+// Las rondas se filtran por la EDICIÓN ACTIVA (fix 2026-08-04): antes se
+// tomaban todas las rondas asignadas al juez de cualquier edición y se elegía
+// la abierta más reciente, así que al cambiar de edición el juez se quedaba en
+// la anterior (y en su etapa y participantes) aunque recargara. judge_rounds no
+// tiene edition_id: se filtra por los stage_id de la edición, igual que
+// useRondasJueces del lado Encargado.
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAppStore } from '../stores/useAppStore'
+import { useEdicionActiva } from './useEdicionActiva'
 
 export interface RondaActiva {
   id: string
@@ -49,6 +57,8 @@ export interface UseRondaJuezResult {
 export function useRondaJuez(): UseRondaJuezResult {
   const user = useAppStore((s) => s.user)
   const judgeId = user?.id
+  const { edicion, loading: loadingEdicion } = useEdicionActiva()
+  const edicionId = edicion?.id
 
   const [ronda, setRonda] = useState<RondaActiva | null>(null)
   const [retos, setRetos] = useState<RetoRonda[]>([])
@@ -60,9 +70,24 @@ export function useRondaJuez(): UseRondaJuezResult {
   useEffect(() => {
     let cancelado = false
 
+    const limpiar = () => {
+      setRonda(null)
+      setRetos([])
+      setFinalistas([])
+      setScoresIniciales([])
+      setLoading(false)
+    }
+
     const cargar = async () => {
       if (!judgeId) {
         if (!cancelado) setLoading(false)
+        return
+      }
+
+      // Sin edición activa no hay ronda que mostrar. Se espera a que el store
+      // resuelva para no parpadear con "sin ronda" en la carga inicial.
+      if (!edicionId) {
+        if (!cancelado && !loadingEdicion) limpiar()
         return
       }
 
@@ -72,22 +97,23 @@ export function useRondaJuez(): UseRondaJuezResult {
       }
 
       try {
-        // 1. Rondas asignadas al juez (RLS filtra a las propias).
-        const { data: asignData, error: asignError } = await supabase
-          .from('judge_round_judges')
-          .select('round_id')
+        // 1. Rondas asignadas al juez (RLS filtra a las propias) + etapas de la
+        //    edición activa, para descartar las rondas de otras ediciones.
+        const [
+          { data: asignData, error: asignError },
+          { data: etapasData, error: etapasError },
+        ] = await Promise.all([
+          supabase.from('judge_round_judges').select('round_id'),
+          supabase.from('stages').select('id').eq('edition_id', edicionId),
+        ])
         if (cancelado) return
         if (asignError) throw asignError
+        if (etapasError) throw etapasError
 
+        const stageIds = new Set((etapasData ?? []).map((e) => e.id))
         const roundIds = (asignData ?? []).map((a) => a.round_id)
-        if (roundIds.length === 0) {
-          if (!cancelado) {
-            setRonda(null)
-            setRetos([])
-            setFinalistas([])
-            setScoresIniciales([])
-            setLoading(false)
-          }
+        if (roundIds.length === 0 || stageIds.size === 0) {
+          if (!cancelado) limpiar()
           return
         }
 
@@ -101,17 +127,12 @@ export function useRondaJuez(): UseRondaJuezResult {
         if (cancelado) return
         if (rondasError) throw rondasError
 
-        const lista = rondasData ?? []
+        // Solo las rondas cuya etapa pertenece a la edición activa.
+        const lista = (rondasData ?? []).filter((r) => stageIds.has(r.stage_id))
         const activa = lista.find((r) => r.status === 'abierta') ?? lista[0] ?? null
 
         if (!activa) {
-          if (!cancelado) {
-            setRonda(null)
-            setRetos([])
-            setFinalistas([])
-            setScoresIniciales([])
-            setLoading(false)
-          }
+          if (!cancelado) limpiar()
           return
         }
 
@@ -181,7 +202,7 @@ export function useRondaJuez(): UseRondaJuezResult {
     return () => {
       cancelado = true
     }
-  }, [judgeId])
+  }, [judgeId, edicionId, loadingEdicion])
 
   return { ronda, retos, finalistas, scoresIniciales, loading, error }
 }
