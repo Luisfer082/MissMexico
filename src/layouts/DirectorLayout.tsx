@@ -20,6 +20,8 @@ function DirectorLayout() {
   const { edicion } = useEdicionActiva()
   const cargarDirector = useAppStore((s) => s.cargarDirector)
   const hayCambios = useAppStore((s) => s.hayCambiosSinGuardar)
+  const sincronizarParticipantes = useAppStore((s) => s.sincronizarParticipantes)
+  const sincronizando = useAppStore((s) => s.directorSincronizando)
 
   // Se intentó cerrar sesión con cambios sin guardar: pide confirmación.
   const [confirmandoSalida, setConfirmandoSalida] = useState(false)
@@ -54,6 +56,16 @@ function DirectorLayout() {
   // y no se pierde nada — avisar ahí solo confundía. No se usa useBlocker de
   // react-router porque exige un data router (createBrowserRouter) y la app
   // monta <BrowserRouter> + <Routes>; migrar eso queda fuera de alcance.
+
+  // Relee participantes y asignaciones conservando el borrador en curso: el
+  // encargado puede dar de alta participantes con el director ya trabajando.
+  const handleSincronizar = () => {
+    void toast.promise(sincronizarParticipantes(), {
+      loading: 'Actualizando participantes...',
+      success: 'Participantes actualizadas',
+      error: (err: unknown) => (err instanceof Error ? err.message : 'Error al actualizar'),
+    })
+  }
 
   const handleSignOut = async () => {
     await toast.promise(signOut(), {
@@ -95,6 +107,16 @@ function DirectorLayout() {
           </div>
 
           <nav className="flex items-center gap-1">
+            <button
+              onClick={handleSincronizar}
+              disabled={sincronizando}
+              title="Volver a leer las participantes de la edición"
+              className="px-3 min-h-[44px] flex items-center text-sm font-medium rounded-lg
+                text-slate-300 hover:text-white hover:bg-slate-800 disabled:opacity-50
+                transition-colors"
+            >
+              {sincronizando ? 'Actualizando...' : 'Actualizar'}
+            </button>
             <NavLink to="/director" end className={claseTab}>
               Promedios
             </NavLink>

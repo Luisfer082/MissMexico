@@ -62,6 +62,15 @@ export interface DirectorState {
   cargarDirector: (edicionId: string) => Promise<void>
   /** Fuerza la recarga descartando el borrador. */
   recargarDirector: () => Promise<void>
+  /**
+   * Relee participantes y asignaciones SIN tirar el borrador: mantiene el orden
+   * manual en curso, agrega al final las participantes nuevas y saca las que ya
+   * no existen. Para cuando el encargado da de alta gente con el director
+   * trabajando.
+   */
+  sincronizarParticipantes: () => Promise<void>
+  /** true mientras corre sincronizarParticipantes (spinner del botón). */
+  directorSincronizando: boolean
   /** Mueve una participante dentro del ranking (drag de reordenamiento). */
   reordenarRanking: (participantId: string, haciaIndice: number) => void
   /** Asigna (o reemplaza) la participante de un título en el borrador. */
@@ -207,6 +216,7 @@ export const createDirectorSlice: StateCreator<DirectorState> = (set, get) => {
     directorAsignacionesFilas: [],
     directorPublicado: false,
     directorGuardando: false,
+    directorSincronizando: false,
     hayCambiosSinGuardar: false,
     directorRondaId: null,
 
@@ -225,6 +235,70 @@ export const createDirectorSlice: StateCreator<DirectorState> = (set, get) => {
       const edicionId = get().directorEdicionId
       if (!edicionId) return
       await fetchDirector(edicionId)
+    },
+
+    sincronizarParticipantes: async () => {
+      const edicionId = get().directorEdicionId
+      if (!edicionId || get().directorSincronizando) return
+
+      set({ directorSincronizando: true })
+      try {
+        const [
+          { data: participantes, error: errParts },
+          { data: asignaciones, error: errAsign },
+        ] = await Promise.all([
+          supabase
+            .from('participants')
+            .select('id, full_name, region, sash_number')
+            .eq('edition_id', edicionId)
+            .order('sash_number', { ascending: true }),
+          supabase.from('title_assignments').select('*').eq('edition_id', edicionId),
+        ])
+        if (errParts) throw errParts
+        if (errAsign) throw errAsign
+
+        const lista = participantes ?? []
+        const vigentes = new Set(lista.map((p) => p.id))
+        const s = get()
+
+        // Orden en curso, sin las que desaparecieron, y las nuevas al final
+        // (por banda) para no mover de lugar lo que el director ya acomodó.
+        const conservadas = s.directorRanking.filter((id) => vigentes.has(id))
+        const yaEstaban = new Set(conservadas)
+        const nuevas = lista.filter((p) => !yaEstaban.has(p.id)).map((p) => p.id)
+
+        // El snapshot guardado también pierde las borradas, pero NO gana las
+        // nuevas: no tienen posición en la BD todavía y deben contar como
+        // cambio pendiente.
+        const guardadoVigente = s.directorRankingGuardado.filter((id) => vigentes.has(id))
+
+        // Las asignaciones sí se reemplazan por lo que dice la BD: si una
+        // participante se borró, su fila se fue en cascada.
+        const filas = asignaciones ?? []
+        const guardadas: AsignacionesBorrador = {}
+        for (const t of s.directorTitulos) {
+          guardadas[t.id] = filas.find((a) => a.title_id === t.id)?.participant_id ?? null
+        }
+        const borrador: AsignacionesBorrador = {}
+        for (const t of s.directorTitulos) {
+          const actual = s.directorAsignaciones[t.id] ?? null
+          borrador[t.id] = actual !== null && vigentes.has(actual) ? actual : guardadas[t.id]
+        }
+
+        set({
+          directorParticipantes: lista,
+          directorRanking: [...conservadas, ...nuevas],
+          directorRankingGuardado: guardadoVigente,
+          directorAsignaciones: borrador,
+          directorAsignacionesGuardadas: guardadas,
+          directorAsignacionesFilas: filas,
+          directorSincronizando: false,
+        })
+        marcarCambios()
+      } catch (err) {
+        set({ directorSincronizando: false })
+        throw err instanceof Error ? err : new Error('No se pudieron actualizar las participantes')
+      }
     },
 
     reordenarRanking: (participantId, haciaIndice) => {
