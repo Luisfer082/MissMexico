@@ -24,9 +24,22 @@ function DirectorLayout() {
   // Se intentó cerrar sesión con cambios sin guardar: pide confirmación.
   const [confirmandoSalida, setConfirmandoSalida] = useState(false)
 
+  // Edición cargada en el borrador, para detectar que el encargado la cambió
+  // por realtime mientras el director trabajaba.
+  const edicionEnBorrador = useAppStore((s) => s.directorEdicionId)
+
   useEffect(() => {
-    if (edicion?.id) void cargarDirector(edicion.id)
-  }, [edicion?.id, cargarDirector])
+    if (!edicion?.id) return
+    // El borrador de otra edición ya no sirve: cargarDirector lo reemplaza. Se
+    // avisa porque el cambio viene de fuera (el encargado activó otra edición).
+    if (edicionEnBorrador && edicionEnBorrador !== edicion.id) {
+      toast(`La edición activa cambió a "${edicion.name}". Se recargaron ranking y títulos.`, {
+        icon: '⚠️',
+        duration: 6000,
+      })
+    }
+    void cargarDirector(edicion.id)
+  }, [edicion?.id, edicion?.name, edicionEnBorrador, cargarDirector])
 
   // Guardia ante recarga / cierre de pestaña.
   useEffect(() => {

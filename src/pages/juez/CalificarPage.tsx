@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import toast from 'react-hot-toast'
 import { useRondaJuez } from '../../hooks/useRondaJuez'
 import { useCalificacionJuez } from '../../hooks/useCalificacionJuez'
 import SyncStatusBadge from '../../components/SyncStatusBadge'
@@ -70,6 +71,21 @@ function CalificarPage() {
     scoresIniciales,
   )
   const [busqueda, setBusqueda] = useState('')
+
+  // El encargado puede cambiar la edición activa en caliente (realtime): la
+  // ronda del juez se reemplaza sola y con ella la etapa y las participantes.
+  // Los puntajes pendientes NO se pierden: siguen atados a su ronda y se
+  // sincronizan igual. Se avisa para que no parezca que se borró su captura.
+  const rondaPrevia = useRef<string | null>(null)
+  useEffect(() => {
+    if (rondaPrevia.current && rondaPrevia.current !== (ronda?.id ?? null)) {
+      toast('La edición activa cambió. Se cargó la ronda que corresponde.', {
+        icon: '⚠️',
+        duration: 6000,
+      })
+    }
+    rondaPrevia.current = ronda?.id ?? null
+  }, [ronda?.id])
 
   // Cerrada al cargar, o detectada como cerrada en caliente por el rechazo de la BD.
   const cerrada = ronda?.status === 'cerrada' || rondaBloqueada
