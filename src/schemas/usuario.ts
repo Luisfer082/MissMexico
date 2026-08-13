@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { sugerenciaDominio } from '../utils/correo'
 
 // Los mismos valores del enum app_role de la BD.
 export const rolesUsuario = ['encargado', 'juez', 'director', 'anunciador'] as const
@@ -22,7 +23,16 @@ const role = z.enum(rolesUsuario, { error: 'Selecciona un rol' })
 // encargado y se le entrega al usuario en mano; no hay correo de invitación.
 export const usuarioCrearSchema = z.object({
   full_name: fullName,
-  email: z.string().email('Ingresa un correo válido'),
+  email: z
+    .string()
+    .email('Ingresa un correo válido')
+    // El correo nunca recibe nada (las credenciales se dan en mano), así que
+    // un dominio mal escrito solo se descubre cuando el usuario no puede
+    // entrar. Se bloquea el alta y se propone la corrección.
+    .refine((valor) => sugerenciaDominio(valor) === null, {
+      error: (issue) =>
+        `¿Quisiste decir @${sugerenciaDominio(String(issue.input))}? Revisa el dominio del correo.`,
+    }),
   password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
   role,
 })
