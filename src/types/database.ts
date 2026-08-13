@@ -478,19 +478,25 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active: boolean
           created_at: string
+          email: string | null
           full_name: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"] | null
         }
         Insert: {
+          active?: boolean
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id: string
           role?: Database["public"]["Enums"]["app_role"] | null
         }
         Update: {
+          active?: boolean
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"] | null
