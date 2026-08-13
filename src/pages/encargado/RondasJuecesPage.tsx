@@ -74,6 +74,14 @@ function RondasJuecesPage() {
     [rondas],
   )
 
+  // Los jueces dados de baja no se ofrecen para rondas nuevas, pero si ya
+  // estaban asignados a la ronda que se edita siguen visibles: si no, el
+  // encargado no podría quitarlos y no entendería por qué falta uno.
+  const juecesOfrecidos = useMemo(
+    () => jueces.filter((j) => j.active || juecesSel.has(j.id)),
+    [jueces, juecesSel],
+  )
+
   // Guarda de habilitación del botón (la validación formal la hace el schema).
   const puedeEnviar =
     etapaId !== '' && retosSel.size > 0 && juecesSel.size > 0 && participantesSel.size >= 2 && !enviando
@@ -410,11 +418,11 @@ function RondasJuecesPage() {
               <legend className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
                 Jueces participantes
               </legend>
-              {jueces.length === 0 ? (
-                <p className="text-sm text-slate-400">No hay usuarios con rol juez.</p>
+              {juecesOfrecidos.length === 0 ? (
+                <p className="text-sm text-slate-400">No hay usuarios con rol juez activos.</p>
               ) : (
                 <div className="space-y-1.5">
-                  {jueces.map((j) => (
+                  {juecesOfrecidos.map((j) => (
                     <label
                       key={j.id}
                       className="flex items-center gap-3 px-3 py-2 rounded-lg border border-gray-200
@@ -427,6 +435,11 @@ function RondasJuecesPage() {
                         className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                       />
                       <span className="text-sm text-slate-700">{j.full_name ?? 'Juez sin nombre'}</span>
+                      {!j.active && (
+                        <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-slate-500">
+                          Inactivo
+                        </span>
+                      )}
                     </label>
                   ))}
                 </div>

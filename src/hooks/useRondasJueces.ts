@@ -23,6 +23,9 @@ export interface RetoOpcion {
 export interface JuezOpcion {
   id: string
   full_name: string | null
+  // Se cargan también los dados de baja: si uno ya estaba asignado a una ronda
+  // debe seguir viéndose ahí. La página es la que decide a quién ofrecer.
+  active: boolean
 }
 
 export interface ParticipanteOpcion {
@@ -126,7 +129,7 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
             .order('order_num', { ascending: true }),
           supabase
             .from('profiles')
-            .select('id, full_name')
+            .select('id, full_name, active')
             .eq('role', 'juez')
             .order('full_name', { ascending: true }),
           supabase
