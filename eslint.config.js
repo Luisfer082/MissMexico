@@ -6,7 +6,9 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // supabase/functions corre en Deno (imports por URL, global Deno), no en el
+  // bundle del front: ni el lint ni el tsconfig de la app lo cubren.
+  globalIgnores(['dist', 'supabase/functions']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
