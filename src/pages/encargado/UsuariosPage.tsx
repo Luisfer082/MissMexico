@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useUsuarios, type Usuario } from '../../hooks/useUsuarios'
 import { useAppStore } from '../../stores/useAppStore'
@@ -13,6 +13,18 @@ const colorRol: Record<(typeof rolesUsuario)[number], string> = {
   juez: 'bg-blue-100 text-blue-700',
   director: 'bg-purple-100 text-purple-700',
   anunciador: 'bg-amber-100 text-amber-700',
+}
+
+type Rol = (typeof rolesUsuario)[number]
+
+// Los usuarios se agrupan por rol para que los jueces queden juntos: son los
+// más numerosos y los que se buscan a diario. Dentro de cada grupo, el orden
+// alfabético que ya trae el hook.
+const ordenRoles: Rol[] = ['juez', 'encargado', 'director', 'anunciador']
+
+interface Grupo {
+  rol: Rol | null
+  usuarios: Usuario[]
 }
 
 function UsuariosPage() {
@@ -71,6 +83,23 @@ function UsuariosPage() {
 
   const activos = usuarios.filter((u) => u.active).length
 
+  // Un grupo por rol, en el orden de ordenRoles; los grupos vacíos no se
+  // pintan. Los perfiles sin rol (alta hecha a mano en Supabase) van al final
+  // para que salten a la vista y se les asigne uno.
+  const grupos = useMemo<Grupo[]>(() => {
+    const salida: Grupo[] = []
+
+    for (const rol of ordenRoles) {
+      const delRol = usuarios.filter((u) => u.role === rol)
+      if (delRol.length > 0) salida.push({ rol, usuarios: delRol })
+    }
+
+    const sinRol = usuarios.filter((u) => u.role === null)
+    if (sinRol.length > 0) salida.push({ rol: null, usuarios: sinRol })
+
+    return salida
+  }, [usuarios])
+
   return (
     <div>
       {/* Encabezado */}
@@ -121,8 +150,21 @@ function UsuariosPage() {
                 <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
-              {usuarios.map((u) => {
+            {grupos.map((grupo) => (
+            <tbody key={grupo.rol ?? 'sin-rol'} className="divide-y divide-gray-50">
+              {/* Encabezado del grupo: mantiene juntos a los jueces, que son
+                  los que se buscan a cada rato. */}
+              <tr className="bg-gray-50/70 border-y border-gray-100">
+                <td colSpan={5} className="px-4 py-2">
+                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                    {grupo.rol ? etiquetaRol[grupo.rol] : 'Sin rol asignado'}
+                  </span>
+                  <span className="ml-2 text-xs text-slate-400">
+                    {grupo.usuarios.length}
+                  </span>
+                </td>
+              </tr>
+              {grupo.usuarios.map((u) => {
                 const soyYo = u.id === miId
                 // Eliminar solo si nunca calificó ni fue asignado a una ronda:
                 // el FK es on delete cascade y se llevaría sus datos.
@@ -200,6 +242,7 @@ function UsuariosPage() {
                 )
               })}
             </tbody>
+            ))}
           </table>
         )}
       </div>
