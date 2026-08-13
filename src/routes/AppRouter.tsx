@@ -15,6 +15,7 @@ const EtapasPage = lazy(() => import('../pages/encargado/EtapasPage'))
 const RetosPage = lazy(() => import('../pages/encargado/RetosPage'))
 const CalificacionesPage = lazy(() => import('../pages/encargado/CalificacionesPage'))
 const RondasJuecesPage = lazy(() => import('../pages/encargado/RondasJuecesPage'))
+const UsuariosPage = lazy(() => import('../pages/encargado/UsuariosPage'))
 const JuezLayout = lazy(() => import('../layouts/JuezLayout'))
 const CalificarPage = lazy(() => import('../pages/juez/CalificarPage'))
 const DirectorLayout = lazy(() => import('../layouts/DirectorLayout'))
@@ -59,6 +60,7 @@ function AppRouter() {
             <Route path="retos" element={<RetosPage />} />
             <Route path="calificaciones" element={<CalificacionesPage />} />
             <Route path="rondas-jueces" element={<RondasJuecesPage />} />
+            <Route path="usuarios" element={<UsuariosPage />} />
           </Route>
 
           {/* Juez — Fase 5 */}

@@ -85,6 +85,13 @@ const IcosJueces = (
   </svg>
 )
 
+const IcosUsuarios = (
+  <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+    <path strokeLinecap="round" strokeLinejoin="round"
+      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+  </svg>
+)
+
 function EncargadoLayout() {
   const navigate = useNavigate()
   const profile = useAppStore((s) => s.profile)
@@ -129,6 +136,7 @@ function EncargadoLayout() {
           <NavItem to="/encargado/retos" icon={IcosRetos} label="Retos" />
           <NavItem to="/encargado/calificaciones" icon={IcosCalificaciones} label="Calificaciones" />
           <NavItem to="/encargado/rondas-jueces" icon={IcosJueces} label="Rondas de jueces" />
+          <NavItem to="/encargado/usuarios" icon={IcosUsuarios} label="Usuarios" />
         </nav>
 
         {/* Footer del sidebar: usuario y cerrar sesión */}
