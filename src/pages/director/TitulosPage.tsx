@@ -38,20 +38,40 @@ function TarjetaParticipante({ participante }: TarjetaProps) {
   return (
     <li
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
       style={{ transform: CSS.Translate.toString(transform) }}
       className={`flex items-center gap-2.5 px-3 py-2 bg-white rounded-lg border border-gray-200
-        cursor-grab active:cursor-grabbing touch-none
         ${isDragging ? 'z-10 relative shadow-lg ring-2 ring-brand-400' : ''}`}
     >
       <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex-shrink-0">
         {participante.sash_number}
       </span>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="font-medium text-slate-900 text-sm truncate">{participante.full_name}</p>
         <p className="text-slate-400 text-xs truncate">{participante.region}</p>
       </div>
+
+      {/* Agarradera: es lo UNICO que arrastra, para que el dedo pueda hacer
+          scroll del pool en tableta sin arrancar un arrastre. */}
+      <button
+        type="button"
+        {...listeners}
+        {...attributes}
+        aria-label={`Arrastrar a ${participante.full_name} hacia un título`}
+        className="flex items-center justify-center w-11 h-11 -mr-1.5 flex-shrink-0 rounded-md
+          text-slate-400 hover:text-slate-600 hover:bg-gray-100 touch-none
+          cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-brand-500"
+      >
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden="true"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
+        </svg>
+      </button>
     </li>
   )
 }

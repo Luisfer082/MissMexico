@@ -24,11 +24,8 @@ function FilaRanking({ participante, posicion, promedio, totalEncargado }: Props
   return (
     <li
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={`flex items-center gap-3 px-3 py-2.5 bg-white rounded-lg border border-gray-200
-        cursor-grab active:cursor-grabbing touch-none
         ${isDragging ? 'z-10 relative shadow-lg ring-2 ring-brand-400' : ''}`}
     >
       <span className="w-6 text-right text-sm font-bold text-slate-400 flex-shrink-0 tabular-nums">
@@ -58,16 +55,28 @@ function FilaRanking({ participante, posicion, promedio, totalEncargado }: Props
         </div>
       </div>
 
-      <svg
-        className="w-4 h-4 text-slate-300 flex-shrink-0"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={2}
-        aria-hidden="true"
+      {/* Agarradera: es lo UNICO que arrastra. El resto de la fila queda libre
+          para que el dedo pueda hacer scroll de la lista en tableta. */}
+      <button
+        type="button"
+        {...listeners}
+        {...attributes}
+        aria-label={`Arrastrar para reordenar a ${participante.full_name}`}
+        className="flex items-center justify-center w-11 h-11 -mr-1 flex-shrink-0 rounded-md
+          text-slate-400 hover:text-slate-600 hover:bg-gray-100 touch-none
+          cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-brand-500"
       >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
-      </svg>
+        <svg
+          className="w-5 h-5"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden="true"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
+        </svg>
+      </button>
     </li>
   )
 }

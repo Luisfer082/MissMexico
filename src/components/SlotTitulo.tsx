@@ -51,14 +51,14 @@ function SlotTitulo({ titulo, participante, onQuitar }: Props) {
           </div>
           <button
             onClick={onQuitar}
-            className="px-2.5 py-1 text-xs font-medium text-red-600 border border-red-200
+            className="px-3 min-h-[44px] text-xs font-medium text-red-600 border border-red-200
               hover:bg-red-50 rounded-md transition-colors flex-shrink-0"
           >
             Quitar
           </button>
         </div>
       ) : (
-        <p className="text-slate-400 text-xs py-2 text-center select-none">
+        <p className="text-slate-400 text-xs min-h-[56px] flex items-center justify-center text-center select-none">
           Arrastra una participante aquí
         </p>
       )}
