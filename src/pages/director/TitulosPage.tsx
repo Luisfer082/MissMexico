@@ -228,7 +228,7 @@ function TitulosPage() {
       )}
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="grid gap-6 lg:grid-cols-[minmax(16rem,1fr)_1.5fr] items-start">
+        <div className="grid gap-4 md:gap-6 md:grid-cols-[minmax(13rem,1fr)_1.5fr] items-start">
           {/* Pool de participantes */}
           <section className="bg-gray-100 rounded-xl p-4">
             <h2 className="font-semibold text-slate-900 text-sm mb-3">
@@ -251,7 +251,7 @@ function TitulosPage() {
                   : 'Todas las participantes tienen título asignado.'}
               </p>
             ) : (
-              <ul className="space-y-2 max-h-[32rem] overflow-y-auto pr-1">
+              <ul className="space-y-2 max-h-[24rem] lg:max-h-[32rem] overflow-y-auto pr-1">
                 {pool.map((p) => (
                   <TarjetaParticipante key={p.id} participante={p} />
                 ))}
@@ -260,7 +260,7 @@ function TitulosPage() {
           </section>
 
           {/* Slots de títulos */}
-          <section className="grid gap-3 sm:grid-cols-2">
+          <section className="grid gap-3 lg:grid-cols-2">
             {titulos.map((t) => {
               const participanteId = asignaciones[t.id] ?? null
               return (

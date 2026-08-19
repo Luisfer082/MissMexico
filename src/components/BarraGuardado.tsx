@@ -23,7 +23,7 @@ function BarraGuardado() {
   return (
     <div className="sticky bottom-0 z-20 -mx-4 mt-6 px-4 py-3 bg-amber-50 border-t border-amber-200">
       <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
-        <p className="text-sm text-amber-900 font-medium">
+        <p className="text-sm text-amber-900 font-medium min-w-0 truncate">
           Tienes cambios sin guardar.
         </p>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -31,7 +31,7 @@ function BarraGuardado() {
             type="button"
             onClick={descartar}
             disabled={guardando}
-            className="px-3 min-h-[40px] rounded-lg border border-amber-300 text-amber-900 text-sm
+            className="px-3 min-h-[44px] rounded-lg border border-amber-300 text-amber-900 text-sm
               font-medium hover:bg-amber-100 transition-colors disabled:opacity-50"
           >
             Descartar
@@ -40,7 +40,7 @@ function BarraGuardado() {
             type="button"
             onClick={handleGuardar}
             disabled={guardando}
-            className="px-4 min-h-[40px] rounded-lg bg-brand-600 text-white text-sm font-medium
+            className="px-4 min-h-[44px] rounded-lg bg-brand-600 text-white text-sm font-medium
               hover:bg-brand-700 transition-colors focus:outline-none focus:ring-2
               focus:ring-brand-500 focus:ring-offset-2 disabled:bg-gray-300"
           >
