@@ -129,7 +129,7 @@ function CalificarPage() {
   return (
     <div>
       {/* Barra superior: etapa en curso + estado de sync (sticky bajo el header) */}
-      <div className="sticky top-[60px] z-10 -mx-4 px-4 py-3 bg-gray-50/95 backdrop-blur mb-4">
+      <div className="sticky top-[68px] z-10 -mx-4 px-4 py-3 bg-gray-50/95 backdrop-blur mb-4">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-lg font-bold text-slate-900 truncate">Calificación</h1>
