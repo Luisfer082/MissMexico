@@ -12,6 +12,7 @@ import type { StateCreator } from 'zustand'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import type { Tables } from '../../types/database'
+import { mensajeError } from '../../utils/mensaje-error'
 
 export interface EdicionState {
   edicionActiva: Tables<'editions'> | null
@@ -67,7 +68,7 @@ export const createEdicionSlice: StateCreator<EdicionState> = (set, get) => {
     } catch (err) {
       if (!vigente()) return
       set({
-        edicionError: err instanceof Error ? err.message : 'Error desconocido',
+        edicionError: mensajeError(err, 'Error desconocido'),
         edicionLoading: false,
         edicionCargada: true,
       })

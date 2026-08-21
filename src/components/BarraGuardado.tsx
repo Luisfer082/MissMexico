@@ -1,5 +1,6 @@
 import toast from 'react-hot-toast'
 import { useAppStore } from '../stores/useAppStore'
+import { mensajeError } from '../utils/mensaje-error'
 
 // Barra fija de "cambios sin guardar" del módulo Director. Vive en el layout
 // (no en cada página) para que el botón Guardar siga visible al alternar entre
@@ -16,7 +17,7 @@ function BarraGuardado() {
     void toast.promise(guardar(), {
       loading: 'Guardando cambios...',
       success: 'Cambios guardados',
-      error: (err: unknown) => (err instanceof Error ? err.message : 'Error al guardar'),
+      error: (err: unknown) => mensajeError(err, 'Error al guardar'),
     })
   }
 

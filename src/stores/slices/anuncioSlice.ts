@@ -19,6 +19,7 @@
 
 import type { StateCreator } from 'zustand'
 import { supabase } from '../../lib/supabase'
+import { mensajeError } from '../../utils/mensaje-error'
 
 export interface TituloAnuncio {
   id: string
@@ -93,7 +94,7 @@ export const createAnuncioSlice: StateCreator<AnuncioState> = (set, get) => ({
     } catch (err) {
       set({
         anuncioError:
-          err instanceof Error ? err.message : 'No se pudieron cargar los títulos a proyectar',
+          mensajeError(err, 'No se pudieron cargar los títulos a proyectar'),
         anuncioLoading: false,
       })
     }

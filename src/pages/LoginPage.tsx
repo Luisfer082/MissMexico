@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { useAppStore } from '../stores/useAppStore'
 import { loginSchema } from '../schemas/auth'
 import type { Database } from '../types/database'
+import { mensajeError } from '../utils/mensaje-error'
 
 type AppRole = Database['public']['Enums']['app_role']
 
@@ -62,8 +63,7 @@ function LoginPage() {
           loading: 'Iniciando sesión...',
           success: 'Sesión iniciada',
           error: (err: unknown) => {
-            if (err instanceof Error) return err.message
-            return 'Error al iniciar sesión'
+            return mensajeError(err, 'Error al iniciar sesión')
           },
         }
       )

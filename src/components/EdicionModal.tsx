@@ -5,6 +5,7 @@ import { edicionSchema } from '../schemas/edicion'
 import { seedTitulos } from '../utils/seed-titulos'
 import Modal from './Modal'
 import type { Tables } from '../types/database'
+import { mensajeError } from '../utils/mensaje-error'
 
 interface Props {
   edicion?: Tables<'editions'>
@@ -90,8 +91,7 @@ function EdicionModal({ edicion, onClose, onGuardado }: Props) {
         loading: esEdicion ? 'Actualizando edición...' : 'Creando edición...',
         success: esEdicion ? 'Edición actualizada' : 'Edición creada',
         error: (err: unknown) => {
-          if (err instanceof Error) return err.message
-          return 'Error al guardar'
+          return mensajeError(err, 'Error al guardar')
         },
       }
     )

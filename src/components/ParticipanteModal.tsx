@@ -106,7 +106,7 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
       setBlobPendiente(blob)
       setPreviewLocal(URL.createObjectURL(blob))
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo procesar la imagen')
+      toast.error(mensajeError(err, 'No se pudo procesar la imagen'))
     } finally {
       setProcesando(false)
     }

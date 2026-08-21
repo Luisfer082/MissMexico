@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { usePuntosJueces } from './usePuntosJueces'
 import type { FilaPuntoJuez, RondaPuntosJueces } from './usePuntosJueces'
+import { mensajeError } from '../utils/mensaje-error'
 
 export interface UsePromediosDirectorResult {
   rondas: RondaPuntosJueces[]
@@ -77,7 +78,7 @@ export function usePromediosDirector(edicionId: string | undefined): UsePromedio
       } catch (err) {
         if (!cancelado) {
           setErrorEncargado(
-            err instanceof Error ? err.message : 'No se pudieron cargar los puntos del encargado',
+            mensajeError(err, 'No se pudieron cargar los puntos del encargado'),
           )
           setLoadingEncargado(false)
         }

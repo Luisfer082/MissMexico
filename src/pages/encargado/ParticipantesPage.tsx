@@ -5,6 +5,7 @@ import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import ParticipanteModal from '../../components/ParticipanteModal'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import type { Tables } from '../../types/database'
+import { mensajeError } from '../../utils/mensaje-error'
 
 type Participante = Tables<'participants'>
 
@@ -92,7 +93,7 @@ function ParticipantesPage() {
       {
         loading: 'Eliminando...',
         success: 'Participante eliminada',
-        error: (err: unknown) => (err instanceof Error ? err.message : 'Error al eliminar'),
+        error: (err: unknown) => mensajeError(err, 'Error al eliminar'),
       }
     )
   }

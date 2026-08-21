@@ -5,6 +5,7 @@ import { etapaSchema } from '../schemas/etapa'
 import { slugify } from '../utils/slugify'
 import Modal from './Modal'
 import type { Tables } from '../types/database'
+import { mensajeError } from '../utils/mensaje-error'
 
 interface Props {
   edicionId: string
@@ -83,8 +84,7 @@ function EtapaModal({ edicionId, etapa, onClose, onGuardado }: Props) {
         loading: esEdicion ? 'Actualizando etapa...' : 'Creando etapa...',
         success: esEdicion ? 'Etapa actualizada' : 'Etapa creada',
         error: (err: unknown) => {
-          if (err instanceof Error) return err.message
-          return 'Error al guardar'
+          return mensajeError(err, 'Error al guardar')
         },
       }
     )

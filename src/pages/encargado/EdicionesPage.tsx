@@ -6,6 +6,7 @@ import EdicionModal from '../../components/EdicionModal'
 import TitulosModal from '../../components/TitulosModal'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import type { Tables } from '../../types/database'
+import { mensajeError } from '../../utils/mensaje-error'
 
 type Edicion = Tables<'editions'>
 
@@ -73,7 +74,7 @@ function EdicionesPage() {
       {
         loading: 'Activando edición...',
         success: `"${edicion.name}" es ahora la edición activa`,
-        error: (err: unknown) => (err instanceof Error ? err.message : 'Error al activar'),
+        error: (err: unknown) => mensajeError(err, 'Error al activar'),
       }
     )
   }
@@ -96,7 +97,7 @@ function EdicionesPage() {
       {
         loading: 'Eliminando...',
         success: 'Edición eliminada',
-        error: (err: unknown) => (err instanceof Error ? err.message : 'Error al eliminar'),
+        error: (err: unknown) => mensajeError(err, 'Error al eliminar'),
       }
     )
   }

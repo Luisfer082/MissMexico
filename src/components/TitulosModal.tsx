@@ -6,6 +6,7 @@ import { seedTitulos } from '../utils/seed-titulos'
 import Modal from './Modal'
 import ConfirmDialog from './ConfirmDialog'
 import type { Tables } from '../types/database'
+import { mensajeError } from '../utils/mensaje-error'
 
 type Titulo = Tables<'titles'>
 type TipoTitulo = 'titulo' | 'finalista'
@@ -86,7 +87,7 @@ function TitulosModal({ edicionId, edicionNombre, onClose }: Props) {
       {
         loading: 'Generando títulos...',
         success: 'Títulos estándar generados',
-        error: (err: unknown) => (err instanceof Error ? err.message : 'Error al generar'),
+        error: (err: unknown) => mensajeError(err, 'Error al generar'),
       },
     )
     setSubmitting(false)
@@ -126,7 +127,7 @@ function TitulosModal({ edicionId, edicionNombre, onClose }: Props) {
       {
         loading: 'Agregando título...',
         success: 'Título agregado',
-        error: (err: unknown) => (err instanceof Error ? err.message : 'Error al agregar'),
+        error: (err: unknown) => mensajeError(err, 'Error al agregar'),
       },
     )
     setSubmitting(false)
@@ -155,7 +156,7 @@ function TitulosModal({ edicionId, edicionNombre, onClose }: Props) {
       {
         loading: 'Quitando título...',
         success: 'Título quitado',
-        error: (err: unknown) => (err instanceof Error ? err.message : 'Error al quitar'),
+        error: (err: unknown) => mensajeError(err, 'Error al quitar'),
       },
     )
     setSubmitting(false)
@@ -195,7 +196,7 @@ function TitulosModal({ edicionId, edicionNombre, onClose }: Props) {
       {
         loading: 'Guardando títulos...',
         success: 'Títulos actualizados',
-        error: (err: unknown) => (err instanceof Error ? err.message : 'Error al guardar'),
+        error: (err: unknown) => mensajeError(err, 'Error al guardar'),
       },
     )
     setSubmitting(false)

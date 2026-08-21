@@ -14,6 +14,7 @@
 import type { StateCreator } from 'zustand'
 import { supabase } from '../../lib/supabase'
 import type { Tables } from '../../types/database'
+import { mensajeError } from '../../utils/mensaje-error'
 
 export interface ParticipanteDirector {
   id: string
@@ -197,7 +198,7 @@ export const createDirectorSlice: StateCreator<DirectorState> = (set, get) => {
     } catch (err) {
       set({
         directorError:
-          err instanceof Error ? err.message : 'No se pudieron cargar los datos del director',
+          mensajeError(err, 'No se pudieron cargar los datos del director'),
         directorLoading: false,
       })
     }
@@ -297,7 +298,7 @@ export const createDirectorSlice: StateCreator<DirectorState> = (set, get) => {
         marcarCambios()
       } catch (err) {
         set({ directorSincronizando: false })
-        throw err instanceof Error ? err : new Error('No se pudieron actualizar las participantes')
+        throw new Error(mensajeError(err, 'No se pudieron actualizar las participantes'), { cause: err })
       }
     },
 
@@ -440,7 +441,7 @@ export const createDirectorSlice: StateCreator<DirectorState> = (set, get) => {
         })
       } catch (err) {
         set({ directorGuardando: false })
-        throw err instanceof Error ? err : new Error('No se pudieron guardar los cambios')
+        throw new Error(mensajeError(err, 'No se pudieron guardar los cambios'), { cause: err })
       }
     },
 

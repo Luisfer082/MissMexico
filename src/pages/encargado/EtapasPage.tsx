@@ -5,6 +5,7 @@ import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import EtapaModal from '../../components/EtapaModal'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import type { Tables } from '../../types/database'
+import { mensajeError } from '../../utils/mensaje-error'
 
 type Etapa = Tables<'stages'>
 
@@ -67,7 +68,7 @@ function EtapasPage() {
       {
         loading: 'Eliminando...',
         success: 'Etapa eliminada',
-        error: (err: unknown) => (err instanceof Error ? err.message : 'Error al eliminar'),
+        error: (err: unknown) => mensajeError(err, 'Error al eliminar'),
       }
     )
   }

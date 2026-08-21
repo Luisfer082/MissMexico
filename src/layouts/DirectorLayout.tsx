@@ -5,6 +5,7 @@ import { useAppStore } from '../stores/useAppStore'
 import { useEdicionActiva } from '../hooks/useEdicionActiva'
 import BarraGuardado from '../components/BarraGuardado'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { mensajeError } from '../utils/mensaje-error'
 
 // Layout del módulo Director. Header oscuro estilo juez (opera en tablet o
 // laptop a pantalla completa, sin sidebar) + tabs para sus tres vistas:
@@ -63,7 +64,7 @@ function DirectorLayout() {
     void toast.promise(sincronizarParticipantes(), {
       loading: 'Actualizando participantes...',
       success: 'Participantes actualizadas',
-      error: (err: unknown) => (err instanceof Error ? err.message : 'Error al actualizar'),
+      error: (err: unknown) => mensajeError(err, 'Error al actualizar'),
     })
   }
 

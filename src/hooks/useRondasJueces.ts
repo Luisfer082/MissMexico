@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { RondaJuezFormData } from '../schemas/rondaJuez'
+import { mensajeError } from '../utils/mensaje-error'
 
 // ─── Tipos de las opciones que el encargado combina al armar una ronda ──────
 export interface EtapaOpcion {
@@ -261,15 +262,10 @@ export function useRondasJueces(edicionId: string | undefined): UseRondasJuecesR
       } catch (err) {
         if (!cancelado) {
           // Exponemos el detalle real. Ojo: Supabase devuelve PostgrestError (un
-          // objeto plano con .message/.code, NO un Error de JS), por eso leemos
-          // .message del objeto además del caso Error. Ayuda a distinguir red
-          // caída de RLS o tabla inexistente.
-          const detalle =
-            err instanceof Error
-              ? err.message
-              : typeof err === 'object' && err !== null && 'message' in err
-                ? String((err as { message: unknown }).message)
-                : 'error desconocido'
+          // objeto plano con .message/.code, NO un Error de JS): mensajeError
+          // cubre los dos casos. Ayuda a distinguir red caída de RLS o tabla
+          // inexistente.
+          const detalle = mensajeError(err, 'error desconocido')
           setError(`No se pudieron cargar las rondas de jueces: ${detalle}`)
           setLoading(false)
         }

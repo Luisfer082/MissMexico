@@ -23,6 +23,7 @@ import { useAppStore } from '../../stores/useAppStore'
 import type { ParticipanteDirector } from '../../stores/slices/directorSlice'
 import SlotTitulo from '../../components/SlotTitulo'
 import { normalizar } from '../../utils/texto'
+import { mensajeError } from '../../utils/mensaje-error'
 
 // ─── Tarjeta arrastrable del pool ─────────────────────────────────────────────
 
@@ -134,7 +135,7 @@ function TitulosPage() {
       success: valor
         ? 'Enviado. El anunciador ya puede proyectar.'
         : 'Retirado. El anunciador dejó de ver los títulos.',
-      error: (err: unknown) => (err instanceof Error ? err.message : 'Error al actualizar el envío'),
+      error: (err: unknown) => mensajeError(err, 'Error al actualizar el envío'),
     })
   }
 

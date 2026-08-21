@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { retoSchema } from '../schemas/reto'
 import Modal from './Modal'
 import type { Tables } from '../types/database'
+import { mensajeError } from '../utils/mensaje-error'
 
 interface Props {
   edicionId: string
@@ -80,8 +81,7 @@ function RetoModal({ edicionId, reto, onClose, onGuardado }: Props) {
         loading: esEdicion ? 'Actualizando reto...' : 'Creando reto...',
         success: esEdicion ? 'Reto actualizado' : 'Reto creado',
         error: (err: unknown) => {
-          if (err instanceof Error) return err.message
-          return 'Error al guardar'
+          return mensajeError(err, 'Error al guardar')
         },
       }
     )
