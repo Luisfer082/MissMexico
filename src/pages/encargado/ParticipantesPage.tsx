@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase'
 import { useEdicionActiva } from '../../hooks/useEdicionActiva'
+import { useConsulta } from '../../hooks/useConsulta'
 import ParticipanteModal from '../../components/ParticipanteModal'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import type { Tables } from '../../types/database'
@@ -35,9 +36,6 @@ function AvatarParticipante({ nombre, photoUrl }: { nombre: string; photoUrl: st
 
 function ParticipantesPage() {
   const { edicion, loading: loadingEdicion } = useEdicionActiva()
-  const [participantes, setParticipantes] = useState<Participante[]>([])
-  // Inicia en true para mostrar spinner inmediato en la primera carga
-  const [loadingParticipantes, setLoadingParticipantes] = useState(true)
   const [busqueda, setBusqueda] = useState('')
 
   // Estado del modal
@@ -47,33 +45,29 @@ function ParticipantesPage() {
   // Participante pendiente de confirmar borrado (null = sin confirmación abierta)
   const [participanteAEliminar, setParticipanteAEliminar] = useState<Participante | null>(null)
 
-  // Contador para disparar recarga después de guardar
-  const [recargar, setRecargar] = useState(0)
-
   const edicionId = edicion?.id
 
+  const {
+    datos,
+    loading: loadingParticipantes,
+    error: errorParticipantes,
+    recargar,
+  } = useConsulta<Participante[]>(
+    edicionId
+      ? () =>
+          supabase
+            .from('participants')
+            .select('*')
+            .eq('edition_id', edicionId)
+            .order('sash_number', { ascending: true })
+      : null,
+    [edicionId],
+  )
+  const participantes = datos ?? []
+
   useEffect(() => {
-    if (!edicionId) return
-
-    let cancelado = false
-
-    supabase
-      .from('participants')
-      .select('*')
-      .eq('edition_id', edicionId)
-      .order('sash_number', { ascending: true })
-      .then(({ data, error }) => {
-        if (cancelado) return
-        if (error) {
-          toast.error(error.message)
-        } else {
-          setParticipantes(data ?? [])
-        }
-        setLoadingParticipantes(false)
-      })
-
-    return () => { cancelado = true }
-  }, [edicionId, recargar])
+    if (errorParticipantes) toast.error(errorParticipantes)
+  }, [errorParticipantes])
 
   const handleConfirmarEliminar = async () => {
     if (!participanteAEliminar) return
@@ -88,7 +82,7 @@ function ParticipantesPage() {
           .eq('id', participante.id)
 
         if (error) throw error
-        setParticipantes((prev) => prev.filter((p) => p.id !== participante.id))
+        recargar()
       })(),
       {
         loading: 'Eliminando...',
@@ -115,7 +109,7 @@ function ParticipantesPage() {
 
   const handleGuardado = () => {
     // Disparar recarga de la lista
-    setRecargar((n) => n + 1)
+    recargar()
   }
 
   // Filtro local por nombre (sin re-query a Supabase)

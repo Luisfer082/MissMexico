@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase'
 import { useEdicionActiva } from '../../hooks/useEdicionActiva'
+import { useConsulta } from '../../hooks/useConsulta'
 import RetoModal from '../../components/RetoModal'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import type { Tables } from '../../types/database'
@@ -11,9 +12,6 @@ type Reto = Tables<'challenges'>
 
 function RetosPage() {
   const { edicion, loading: loadingEdicion } = useEdicionActiva()
-  const [retos, setRetos] = useState<Reto[]>([])
-  // Inicia en true para mostrar spinner inmediato en la primera carga
-  const [loadingRetos, setLoadingRetos] = useState(true)
   const [busqueda, setBusqueda] = useState('')
 
   // Estado del modal
@@ -23,33 +21,24 @@ function RetosPage() {
   // Reto pendiente de confirmar borrado (null = sin confirmación abierta)
   const [retoAEliminar, setRetoAEliminar] = useState<Reto | null>(null)
 
-  // Contador para disparar recarga después de guardar
-  const [recargar, setRecargar] = useState(0)
-
   const edicionId = edicion?.id
 
+  const { datos, loading: loadingRetos, error: errorRetos, recargar } = useConsulta<Reto[]>(
+    edicionId
+      ? () =>
+          supabase
+            .from('challenges')
+            .select('*')
+            .eq('edition_id', edicionId)
+            .order('order_num', { ascending: true })
+      : null,
+    [edicionId],
+  )
+  const retos = datos ?? []
+
   useEffect(() => {
-    if (!edicionId) return
-
-    let cancelado = false
-
-    supabase
-      .from('challenges')
-      .select('*')
-      .eq('edition_id', edicionId)
-      .order('order_num', { ascending: true })
-      .then(({ data, error }) => {
-        if (cancelado) return
-        if (error) {
-          toast.error(error.message)
-        } else {
-          setRetos(data ?? [])
-        }
-        setLoadingRetos(false)
-      })
-
-    return () => { cancelado = true }
-  }, [edicionId, recargar])
+    if (errorRetos) toast.error(errorRetos)
+  }, [errorRetos])
 
   const handleConfirmarEliminar = async () => {
     if (!retoAEliminar) return
@@ -64,7 +53,7 @@ function RetosPage() {
           .eq('id', reto.id)
 
         if (error) throw error
-        setRetos((prev) => prev.filter((r) => r.id !== reto.id))
+        recargar()
       })(),
       {
         loading: 'Eliminando...',
@@ -90,7 +79,7 @@ function RetosPage() {
   }
 
   const handleGuardado = () => {
-    setRecargar((n) => n + 1)
+    recargar()
   }
 
   // Filtro local por nombre (sin re-query a Supabase)

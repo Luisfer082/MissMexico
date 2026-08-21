@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase'
 import { useAppStore } from '../../stores/useAppStore'
+import { useConsulta } from '../../hooks/useConsulta'
 import EdicionModal from '../../components/EdicionModal'
 import TitulosModal from '../../components/TitulosModal'
 import ConfirmDialog from '../../components/ConfirmDialog'
@@ -13,9 +14,6 @@ type Edicion = Tables<'editions'>
 function EdicionesPage() {
   // Invalida el caché de la edición activa del store tras mutaciones
   const refrescarEdicionActiva = useAppStore((s) => s.refrescarEdicionActiva)
-  const [ediciones, setEdiciones] = useState<Edicion[]>([])
-  // Inicia en true para mostrar spinner inmediato en la primera carga
-  const [loading, setLoading] = useState(true)
 
   // Estado del modal de crear/editar
   const [modalAbierto, setModalAbierto] = useState(false)
@@ -27,28 +25,15 @@ function EdicionesPage() {
   // Edición cuyo catálogo de títulos se está editando (null = modal cerrado)
   const [edicionTitulos, setEdicionTitulos] = useState<Edicion | null>(null)
 
-  // Contador para disparar recarga después de guardar/activar
-  const [recargar, setRecargar] = useState(0)
+  const { datos, loading, error: errorEdiciones, recargar } = useConsulta<Edicion[]>(
+    () => supabase.from('editions').select('*').order('year', { ascending: false }),
+    [],
+  )
+  const ediciones = datos ?? []
 
   useEffect(() => {
-    let cancelado = false
-
-    supabase
-      .from('editions')
-      .select('*')
-      .order('year', { ascending: false })
-      .then(({ data, error }) => {
-        if (cancelado) return
-        if (error) {
-          toast.error(error.message)
-        } else {
-          setEdiciones(data ?? [])
-        }
-        setLoading(false)
-      })
-
-    return () => { cancelado = true }
-  }, [recargar])
+    if (errorEdiciones) toast.error(errorEdiciones)
+  }, [errorEdiciones])
 
   const handleActivar = async (edicion: Edicion) => {
     await toast.promise(
@@ -68,7 +53,7 @@ function EdicionesPage() {
           .eq('id', edicion.id)
         if (errOn) throw errOn
 
-        setRecargar((n) => n + 1)
+        recargar()
         void refrescarEdicionActiva()
       })(),
       {
@@ -92,7 +77,7 @@ function EdicionesPage() {
           .eq('id', edicion.id)
 
         if (error) throw error
-        setEdiciones((prev) => prev.filter((e) => e.id !== edicion.id))
+        recargar()
       })(),
       {
         loading: 'Eliminando...',
@@ -118,7 +103,7 @@ function EdicionesPage() {
   }
 
   const handleGuardado = () => {
-    setRecargar((n) => n + 1)
+    recargar()
     // Editar puede renombrar la edición activa: refrescar el caché del store
     void refrescarEdicionActiva()
   }

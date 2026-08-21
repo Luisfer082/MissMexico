@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../../lib/supabase'
 import { useEdicionActiva } from '../../hooks/useEdicionActiva'
+import { useConsulta } from '../../hooks/useConsulta'
 import EtapaModal from '../../components/EtapaModal'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import type { Tables } from '../../types/database'
@@ -11,9 +12,6 @@ type Etapa = Tables<'stages'>
 
 function EtapasPage() {
   const { edicion, loading: loadingEdicion } = useEdicionActiva()
-  const [etapas, setEtapas] = useState<Etapa[]>([])
-  // Inicia en true para mostrar spinner inmediato en la primera carga
-  const [loadingEtapas, setLoadingEtapas] = useState(true)
 
   // Estado del modal de crear/editar
   const [modalAbierto, setModalAbierto] = useState(false)
@@ -22,33 +20,24 @@ function EtapasPage() {
   // Etapa pendiente de confirmar borrado (null = sin confirmación abierta)
   const [etapaAEliminar, setEtapaAEliminar] = useState<Etapa | null>(null)
 
-  // Contador para disparar recarga después de guardar
-  const [recargar, setRecargar] = useState(0)
-
   const edicionId = edicion?.id
 
+  const { datos, loading: loadingEtapas, error: errorEtapas, recargar } = useConsulta<Etapa[]>(
+    edicionId
+      ? () =>
+          supabase
+            .from('stages')
+            .select('*')
+            .eq('edition_id', edicionId)
+            .order('order_num', { ascending: true })
+      : null,
+    [edicionId],
+  )
+  const etapas = datos ?? []
+
   useEffect(() => {
-    if (!edicionId) return
-
-    let cancelado = false
-
-    supabase
-      .from('stages')
-      .select('*')
-      .eq('edition_id', edicionId)
-      .order('order_num', { ascending: true })
-      .then(({ data, error }) => {
-        if (cancelado) return
-        if (error) {
-          toast.error(error.message)
-        } else {
-          setEtapas(data ?? [])
-        }
-        setLoadingEtapas(false)
-      })
-
-    return () => { cancelado = true }
-  }, [edicionId, recargar])
+    if (errorEtapas) toast.error(errorEtapas)
+  }, [errorEtapas])
 
   const handleConfirmarEliminar = async () => {
     if (!etapaAEliminar) return
@@ -63,7 +52,7 @@ function EtapasPage() {
           .eq('id', etapa.id)
 
         if (error) throw error
-        setEtapas((prev) => prev.filter((e) => e.id !== etapa.id))
+        recargar()
       })(),
       {
         loading: 'Eliminando...',
@@ -89,7 +78,7 @@ function EtapasPage() {
   }
 
   const handleGuardado = () => {
-    setRecargar((n) => n + 1)
+    recargar()
   }
 
   if (loadingEdicion) {
