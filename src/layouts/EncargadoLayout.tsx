@@ -13,8 +13,11 @@ function NavItem({ to, icon, label }: NavItemProps) {
     <NavLink
       to={to}
       end={to === '/encargado'}
+      // title: en tablet el sidebar es solo de iconos y el texto no se ve.
+      title={label}
       className={({ isActive }) =>
-        `relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors duration-150 ${
+        `relative flex items-center justify-center lg:justify-start gap-3 px-3 min-h-[44px]
+        rounded-lg text-sm font-medium transition-colors duration-150 ${
           isActive
             ? 'bg-slate-800 text-white'
             : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
@@ -28,7 +31,7 @@ function NavItem({ to, icon, label }: NavItemProps) {
             <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-brand-500" />
           )}
           <span className="w-5 h-5 flex-shrink-0">{icon}</span>
-          {label}
+          <span className="hidden lg:inline">{label}</span>
         </>
       )}
     </NavLink>
@@ -109,10 +112,10 @@ function EncargadoLayout() {
   return (
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
-      <aside className="w-60 flex-shrink-0 bg-slate-900 flex flex-col">
+      <aside className="w-16 lg:w-60 flex-shrink-0 bg-slate-900 flex flex-col">
         {/* Logo */}
-        <div className="px-4 py-5 border-b border-slate-700">
-          <div className="flex items-center gap-3">
+        <div className="px-2 lg:px-4 py-5 border-b border-slate-700">
+          <div className="flex items-center justify-center lg:justify-start gap-3">
             <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-brand-700 rounded-lg flex items-center justify-center flex-shrink-0">
               {/* Corona: identidad del certamen */}
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -120,7 +123,7 @@ function EncargadoLayout() {
                   d="M5 16L3 7l5.5 4L12 5l3.5 6L21 7l-2 9H5zm0 0h14v2a1 1 0 01-1 1H6a1 1 0 01-1-1v-2z" />
               </svg>
             </div>
-            <div>
+            <div className="hidden lg:block">
               <p className="text-white text-sm font-semibold leading-tight">Miss México</p>
               <p className="text-slate-400 text-xs">Calificaciones en vivo</p>
             </div>
@@ -128,7 +131,7 @@ function EncargadoLayout() {
         </div>
 
         {/* Navegación */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 px-2 lg:px-3 py-4 space-y-1 overflow-y-auto">
           <NavItem to="/encargado" icon={IcosDashboard} label="Inicio" />
           <NavItem to="/encargado/ediciones" icon={IcosEdiciones} label="Ediciones" />
           <NavItem to="/encargado/participantes" icon={IcosParticipantes} label="Participantes" />
@@ -140,8 +143,8 @@ function EncargadoLayout() {
         </nav>
 
         {/* Footer del sidebar: usuario y cerrar sesión */}
-        <div className="px-3 py-4 border-t border-slate-700">
-          <div className="flex items-center gap-2 mb-3 px-1">
+        <div className="px-2 lg:px-3 py-4 border-t border-slate-700">
+          <div className="hidden lg:flex items-center gap-2 mb-3 px-1">
             <div className="w-7 h-7 bg-slate-600 rounded-full flex items-center justify-center flex-shrink-0">
               <span className="text-slate-200 text-xs font-medium">
                 {profile?.full_name?.charAt(0)?.toUpperCase() ?? 'U'}
@@ -156,21 +159,23 @@ function EncargadoLayout() {
           </div>
           <button
             onClick={() => void handleSignOut()}
-            className="w-full flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-white
-              hover:bg-slate-700 rounded-lg text-xs font-medium transition-colors"
+            title="Cerrar sesión"
+            className="w-full flex items-center justify-center lg:justify-start gap-2 px-3
+              min-h-[44px] text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg
+              text-xs font-medium transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
               <path strokeLinecap="round" strokeLinejoin="round"
                 d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            Cerrar sesión
+            <span className="hidden lg:inline">Cerrar sesión</span>
           </button>
         </div>
       </aside>
 
       {/* Área de contenido */}
       <main className="flex-1 overflow-y-auto">
-        <div className="max-w-6xl mx-auto px-8 py-8">
+        <div className="max-w-6xl mx-auto px-4 lg:px-8 py-6 lg:py-8">
           <Outlet />
         </div>
       </main>

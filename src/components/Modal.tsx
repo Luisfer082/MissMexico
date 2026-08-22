@@ -32,7 +32,11 @@ function Modal({ titulo, onClose, children }: Props) {
       ref={dialogRef}
       onClose={onClose}
       onClick={handleClickFondo}
-      className="w-full max-w-md p-0 rounded-2xl bg-white shadow-xl backdrop:bg-black/50"
+      // max-h + flex: el header queda fijo y el contenido largo hace scroll
+      // dentro del modal, para que en tableta horizontal (768px de alto) los
+      // botones de guardar sigan siendo alcanzables.
+      className="w-full max-w-md p-0 rounded-2xl bg-white shadow-xl backdrop:bg-black/50
+        max-h-[90vh] flex flex-col"
     >
       {/* Header del modal */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
@@ -49,7 +53,7 @@ function Modal({ titulo, onClose, children }: Props) {
         </button>
       </div>
 
-      {children}
+      <div className="overflow-y-auto">{children}</div>
     </dialog>
   )
 }

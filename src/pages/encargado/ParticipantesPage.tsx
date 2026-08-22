@@ -192,7 +192,7 @@ function ParticipantesPage() {
       </div>
 
       {/* Tabla de participantes */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-card overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-card overflow-x-auto">
         {loadingParticipantes ? (
           <div className="flex items-center justify-center py-16">
             <div className="w-6 h-6 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />

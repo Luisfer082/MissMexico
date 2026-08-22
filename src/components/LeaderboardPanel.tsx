@@ -32,7 +32,7 @@ function LeaderboardPanel({ rows }: Props) {
   const totalLider = Math.max(...rows.map((r) => r.total), 0)
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-card overflow-hidden">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-card overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-gray-50 border-b border-gray-100">

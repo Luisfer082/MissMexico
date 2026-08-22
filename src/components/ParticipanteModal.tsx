@@ -220,7 +220,8 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden
+        max-h-[90vh] flex flex-col">
 
         {/* Header del modal con acento de color según modo */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
@@ -260,7 +261,7 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
         </div>
 
         {/* Formulario */}
-        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4 overflow-y-auto">
           {/* Nombre completo */}
           <div>
             <label htmlFor="full_name" className="block text-sm font-medium text-slate-700 mb-1">
