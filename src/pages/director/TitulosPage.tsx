@@ -12,13 +12,15 @@ import { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
   DndContext,
-  PointerSensor,
+  DragOverlay,
+  MouseSensor,
+  TouchSensor,
   useDraggable,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core'
-import { CSS } from '@dnd-kit/utilities'
 import { useAppStore } from '../../stores/useAppStore'
 import type { ParticipanteDirector } from '../../stores/slices/directorSlice'
 import SlotTitulo from '../../components/SlotTitulo'
@@ -31,18 +33,14 @@ interface TarjetaProps {
   participante: ParticipanteDirector
 }
 
-function TarjetaParticipante({ participante }: TarjetaProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: participante.id,
-  })
+/** Clases compartidas por la tarjeta real y la del overlay, para que se vean igual. */
+const CLASES_TARJETA =
+  'flex items-center gap-2.5 px-3 py-2 bg-white rounded-lg border border-gray-200'
 
+// Contenido visual, sin nada de drag: se reutiliza en el DragOverlay.
+function ContenidoTarjeta({ participante }: TarjetaProps) {
   return (
-    <li
-      ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform) }}
-      className={`flex items-center gap-2.5 px-3 py-2 bg-white rounded-lg border border-gray-200
-        ${isDragging ? 'z-10 relative shadow-lg ring-2 ring-brand-400' : ''}`}
-    >
+    <>
       <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex-shrink-0">
         {participante.sash_number}
       </span>
@@ -50,29 +48,40 @@ function TarjetaParticipante({ participante }: TarjetaProps) {
         <p className="font-medium text-slate-900 text-sm truncate">{participante.full_name}</p>
         <p className="text-slate-400 text-xs truncate">{participante.region}</p>
       </div>
-
-      {/* Agarradera: es lo UNICO que arrastra, para que el dedo pueda hacer
-          scroll del pool en tableta sin arrancar un arrastre. */}
-      <button
-        type="button"
-        {...listeners}
-        {...attributes}
-        aria-label={`Arrastrar a ${participante.full_name} hacia un título`}
-        className="flex items-center justify-center w-11 h-11 -mr-1.5 flex-shrink-0 rounded-md
-          text-slate-400 hover:text-slate-600 hover:bg-gray-100 touch-none
-          cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-brand-500"
+      <svg
+        className="w-5 h-5 text-slate-300 flex-shrink-0"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+        aria-hidden="true"
       >
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-          aria-hidden="true"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
-        </svg>
-      </button>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
+      </svg>
+    </>
+  )
+}
+
+// Los listeners van en TODA la tarjeta (Luis, 2026-08-21). Lo que evita que el
+// gesto le robe el scroll al pool es el `delay` del TouchSensor: en táctil hay
+// que mantener presionado para arrastrar.
+function TarjetaParticipante({ participante }: TarjetaProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: participante.id,
+  })
+
+  return (
+    <li
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      // Sin transform: la tarjeta se queda quieta y lo que se mueve es la copia
+      // del DragOverlay. Antes se movía aquí dentro y, como el pool tiene
+      // overflow-y-auto, estiraba el contenedor y quedaba cortada.
+      className={`${CLASES_TARJETA} cursor-grab active:cursor-grabbing touch-manipulation
+        select-none ${isDragging ? 'opacity-40' : ''}`}
+    >
+      <ContenidoTarjeta participante={participante} />
     </li>
   )
 }
@@ -96,9 +105,20 @@ function TitulosPage() {
 
   // Distancia mínima para iniciar el drag: evita que un tap dentro de la
   // tarjeta arranque un arrastre accidental (también en touch).
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+  // Ratón y dedo necesitan gestos distintos: con el ratón basta desplazar un
+  // poco; en táctil hay que MANTENER PRESIONADO ~220ms para no robarle el
+  // gesto al scroll del pool.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+  )
+
+  // Participante que se está arrastrando, para pintarla en el DragOverlay.
+  const [arrastrandoId, setArrastrandoId] = useState<string | null>(null)
 
   const porId = useMemo(() => new Map(participantes.map((p) => [p.id, p])), [participantes])
+
+  const arrastrando = arrastrandoId ? porId.get(arrastrandoId) : undefined
 
   const ocupadas = useMemo(
     () => new Set(Object.values(asignaciones).filter((id): id is string => id !== null)),
@@ -228,7 +248,15 @@ function TitulosPage() {
         </div>
       )}
 
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        onDragStart={(e: DragStartEvent) => setArrastrandoId(String(e.active.id))}
+        onDragEnd={(e) => {
+          setArrastrandoId(null)
+          handleDragEnd(e)
+        }}
+        onDragCancel={() => setArrastrandoId(null)}
+      >
         <div className="grid gap-4 md:gap-6 md:grid-cols-[minmax(13rem,1fr)_1.5fr] items-start">
           {/* Pool de participantes */}
           <section className="bg-gray-100 rounded-xl p-4">
@@ -275,6 +303,16 @@ function TitulosPage() {
             })}
           </section>
         </div>
+
+        {/* La copia que sigue al dedo, en un portal por encima de todo: no la
+            recorta el overflow del pool ni estira su contenedor. */}
+        <DragOverlay>
+          {arrastrando ? (
+            <div className={`${CLASES_TARJETA} shadow-2xl ring-2 ring-brand-400 cursor-grabbing`}>
+              <ContenidoTarjeta participante={arrastrando} />
+            </div>
+          ) : null}
+        </DragOverlay>
       </DndContext>
 
       <p className="text-xs text-slate-400 mt-4">

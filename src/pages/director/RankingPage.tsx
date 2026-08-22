@@ -9,19 +9,22 @@
 // del encargado, como referencia para ordenar (Luis, 2026-08-04). La ronda es
 // la misma que en Promedios: vive en el store, compartida por las tres tabs.
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   DndContext,
-  PointerSensor,
+  DragOverlay,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useAppStore } from '../../stores/useAppStore'
 import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import { usePromediosDirector } from '../../hooks/usePromediosDirector'
-import FilaRanking from '../../components/FilaRanking'
+import FilaRanking, { ContenidoFila, CLASES_FILA } from '../../components/FilaRanking'
 
 function RankingPage() {
   const loading = useAppStore((s) => s.directorLoading)
@@ -56,12 +59,24 @@ function RankingPage() {
     return new Map([...acc].map(([id, v]) => [id, v.suma / v.cuenta]))
   }, [puntajes, rondaEfectiva])
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }))
+  // Ratón y dedo necesitan gestos distintos. Con el ratón basta un pequeño
+  // desplazamiento; en táctil hace falta MANTENER PRESIONADO ~220ms, porque si
+  // no el arrastre le robaría el gesto al scroll de la lista (son ~32 filas).
+  // `tolerance` permite algo de temblor del dedo sin cancelar el arrastre.
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+  )
+
+  // Fila que se está arrastrando, para pintarla en el DragOverlay.
+  const [arrastrandoId, setArrastrandoId] = useState<string | null>(null)
 
   const porId = useMemo(
     () => new Map(participantes.map((p) => [p.id, p])),
     [participantes],
   )
+
+  const arrastrando = arrastrandoId ? porId.get(arrastrandoId) : undefined
 
   const handleDragEnd = (e: DragEndEvent) => {
     if (!e.over || e.active.id === e.over.id) return
@@ -168,7 +183,15 @@ function RankingPage() {
         )}
       </div>
 
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <DndContext
+        sensors={sensors}
+        onDragStart={(e: DragStartEvent) => setArrastrandoId(String(e.active.id))}
+        onDragEnd={(e) => {
+          setArrastrandoId(null)
+          handleDragEnd(e)
+        }}
+        onDragCancel={() => setArrastrandoId(null)}
+      >
         <SortableContext items={ranking} strategy={verticalListSortingStrategy}>
           <ul className="space-y-2">
             {ranking.map((id, i) => {
@@ -186,6 +209,21 @@ function RankingPage() {
             })}
           </ul>
         </SortableContext>
+
+        {/* El overlay pinta la fila arrastrada por encima de todo, en un portal.
+            Sin él la fila se movía dentro del flujo y quedaba tapada o cortada. */}
+        <DragOverlay>
+          {arrastrando ? (
+            <div className={`${CLASES_FILA} shadow-2xl ring-2 ring-brand-400 cursor-grabbing`}>
+              <ContenidoFila
+                participante={arrastrando}
+                posicion={ranking.indexOf(arrastrando.id) + 1}
+                promedio={promedios.get(arrastrando.id) ?? null}
+                totalEncargado={totalesEncargado.get(arrastrando.id) ?? 0}
+              />
+            </div>
+          ) : null}
+        </DragOverlay>
       </DndContext>
 
       <p className="text-xs text-slate-400 mt-4">

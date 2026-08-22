@@ -3,7 +3,7 @@ import { CSS } from '@dnd-kit/utilities'
 import type { ParticipanteDirector } from '../stores/slices/directorSlice'
 import { formatearPuntaje } from '../utils/puntaje'
 
-interface Props {
+interface ContenidoProps {
   participante: ParticipanteDirector
   /** Posición en el ranking (1-based), la que se guarda en manual_rankings. */
   posicion: number
@@ -13,21 +13,16 @@ interface Props {
   totalEncargado: number
 }
 
-// Fila arrastrable del ranking manual del director. Usa @dnd-kit/sortable
-// (lista reordenable) a diferencia de los títulos, que son pool → slot fijo
-// y se resuelven con @dnd-kit/core.
-function FilaRanking({ participante, posicion, promedio, totalEncargado }: Props) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: participante.id,
-  })
-
+// Contenido visual de la fila, sin nada de drag. Se comparte entre la fila real
+// y la copia que se pinta en el DragOverlay mientras se arrastra.
+export function ContenidoFila({
+  participante,
+  posicion,
+  promedio,
+  totalEncargado,
+}: ContenidoProps) {
   return (
-    <li
-      ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={`flex items-center gap-3 px-3 py-2.5 bg-white rounded-lg border border-gray-200
-        ${isDragging ? 'z-10 relative shadow-lg ring-2 ring-brand-400' : ''}`}
-    >
+    <>
       <span className="w-6 text-right text-sm font-bold text-slate-400 flex-shrink-0 tabular-nums">
         {posicion}
       </span>
@@ -55,28 +50,49 @@ function FilaRanking({ participante, posicion, promedio, totalEncargado }: Props
         </div>
       </div>
 
-      {/* Agarradera: es lo UNICO que arrastra. El resto de la fila queda libre
-          para que el dedo pueda hacer scroll de la lista en tableta. */}
-      <button
-        type="button"
-        {...listeners}
-        {...attributes}
-        aria-label={`Arrastrar para reordenar a ${participante.full_name}`}
-        className="flex items-center justify-center w-11 h-11 -mr-1 flex-shrink-0 rounded-md
-          text-slate-400 hover:text-slate-600 hover:bg-gray-100 touch-none
-          cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-brand-500"
+      <svg
+        className="w-5 h-5 text-slate-300 flex-shrink-0"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+        aria-hidden="true"
       >
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-          aria-hidden="true"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
-        </svg>
-      </button>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
+      </svg>
+    </>
+  )
+}
+
+/** Clases compartidas por la fila real y la del overlay, para que se vean igual. */
+export const CLASES_FILA =
+  'flex items-center gap-3 px-3 py-2.5 bg-white rounded-lg border border-gray-200'
+
+// Fila arrastrable del ranking manual del director. Usa @dnd-kit/sortable
+// (lista reordenable) a diferencia de los títulos, que son pool → slot fijo
+// y se resuelven con @dnd-kit/core.
+//
+// Los listeners van en TODA la fila (Luis, 2026-08-21: arrastrar solo desde la
+// agarradera no se sentía natural). Lo que evita que el gesto le robe el scroll
+// es el TouchSensor con `delay` del DndContext: en táctil hay que mantener
+// presionado para arrastrar, y un deslizamiento corto sigue haciendo scroll.
+function FilaRanking(props: ContenidoProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props.participante.id,
+  })
+
+  return (
+    <li
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      // touch-manipulation (no touch-none): deja pasar el scroll y solo bloquea
+      // el doble-tap para zoom. El drag lo activa el delay del TouchSensor.
+      className={`${CLASES_FILA} cursor-grab active:cursor-grabbing touch-manipulation select-none
+        ${isDragging ? 'opacity-40' : ''}`}
+    >
+      <ContenidoFila {...props} />
     </li>
   )
 }
