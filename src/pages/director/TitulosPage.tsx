@@ -5,8 +5,9 @@
 // con Guardar (barra del layout). Antes cada movimiento era un round-trip y la
 // selección se perdía al cambiar de pestaña.
 //
-// El pool muestra a todas las participantes de la edición aún sin título
-// (pendiente en §5.1: decidir si se restringe a las finalistas de la última etapa).
+// El pool muestra a todas las participantes de la edición aún sin título, en el
+// orden del ranking manual (pendiente en §5.1: decidir si se restringe a las
+// finalistas de la última etapa).
 
 import { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
@@ -100,11 +101,10 @@ function TitulosPage() {
   const publicado = useAppStore((s) => s.directorPublicado)
   const publicar = useAppStore((s) => s.publicarDirector)
   const hayCambios = useAppStore((s) => s.hayCambiosSinGuardar)
+  const ranking = useAppStore((s) => s.directorRanking)
 
   const [busqueda, setBusqueda] = useState('')
 
-  // Distancia mínima para iniciar el drag: evita que un tap dentro de la
-  // tarjeta arranque un arrastre accidental (también en touch).
   // Ratón y dedo necesitan gestos distintos: con el ratón basta desplazar un
   // poco; en táctil hay que MANTENER PRESIONADO ~110ms para no robarle el
   // gesto al scroll del pool.
@@ -125,8 +125,27 @@ function TitulosPage() {
     [asignaciones],
   )
 
+  // Posición de cada participante en el ranking manual, para ordenar el pool
+  // igual que la pestaña Ranking (Luis, 2026-08-21): así se asignan los títulos
+  // de arriba hacia abajo sin ir a buscar a cada una.
+  const posicionEnRanking = useMemo(() => {
+    const m = new Map<string, number>()
+    ranking.forEach((id, i) => m.set(id, i))
+    return m
+  }, [ranking])
+
   const pool = useMemo(() => {
     const libres = participantes.filter((p) => !ocupadas.has(p.id))
+
+    // Las que no estén en el ranking (alta reciente) van al final, por banda.
+    const sinRanking = ranking.length
+    libres.sort((a, b) => {
+      const pa = posicionEnRanking.get(a.id) ?? sinRanking
+      const pb = posicionEnRanking.get(b.id) ?? sinRanking
+      if (pa !== pb) return pa - pb
+      return a.sash_number - b.sash_number
+    })
+
     const q = normalizar(busqueda.trim())
     if (q === '') return libres
     return libres.filter(
@@ -135,7 +154,7 @@ function TitulosPage() {
         normalizar(p.region).includes(q) ||
         p.sash_number.toString() === q,
     )
-  }, [participantes, ocupadas, busqueda])
+  }, [participantes, ocupadas, busqueda, posicionEnRanking, ranking.length])
 
   const handleDragEnd = (e: DragEndEvent) => {
     if (!e.over) return
