@@ -106,11 +106,11 @@ function TitulosPage() {
   // Distancia mínima para iniciar el drag: evita que un tap dentro de la
   // tarjeta arranque un arrastre accidental (también en touch).
   // Ratón y dedo necesitan gestos distintos: con el ratón basta desplazar un
-  // poco; en táctil hay que MANTENER PRESIONADO ~220ms para no robarle el
+  // poco; en táctil hay que MANTENER PRESIONADO ~110ms para no robarle el
   // gesto al scroll del pool.
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 110, tolerance: 8 } }),
   )
 
   // Participante que se está arrastrando, para pintarla en el DragOverlay.

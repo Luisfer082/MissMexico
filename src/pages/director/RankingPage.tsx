@@ -60,12 +60,12 @@ function RankingPage() {
   }, [puntajes, rondaEfectiva])
 
   // Ratón y dedo necesitan gestos distintos. Con el ratón basta un pequeño
-  // desplazamiento; en táctil hace falta MANTENER PRESIONADO ~220ms, porque si
+  // desplazamiento; en táctil hace falta MANTENER PRESIONADO ~110ms, porque si
   // no el arrastre le robaría el gesto al scroll de la lista (son ~32 filas).
   // `tolerance` permite algo de temblor del dedo sin cancelar el arrastre.
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 110, tolerance: 8 } }),
   )
 
   // Fila que se está arrastrando, para pintarla en el DragOverlay.
