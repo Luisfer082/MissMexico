@@ -5,9 +5,13 @@ import { useAppStore } from '../stores/useAppStore'
 import { useEdicionActiva } from '../hooks/useEdicionActiva'
 
 // Layout del módulo Anunciador. Header oscuro estilo director + tabs para sus
-// dos vistas: Proyección (lo que ve el escenario) y Control (donde el operador
-// revela los títulos uno por uno). Es "misma pantalla": el operador alterna
-// entre ambas pestañas y el estado de revelado vive en memoria (Zustand).
+// dos vistas: Proyección (el show: título grande + botón de revelar, todo en la
+// misma pantalla) y Orden (donde se define en qué orden se revelan).
+//
+// OJO: Proyección se dibuja a pantalla completa POR ENCIMA de este header
+// (fixed inset-0), a propósito: el proyector no debe mostrar el nombre del
+// usuario ni las pestañas. Se vuelve aquí desde el botón "Cambiar orden" de sus
+// controles. El header sí se ve mientras no hay títulos que proyectar.
 //
 // Carga aquí los títulos de la edición activa, una sola vez para las dos
 // pestañas.
@@ -60,8 +64,8 @@ function AnunciadorLayout() {
             <NavLink to="/anunciador" end className={claseTab}>
               Proyección
             </NavLink>
-            <NavLink to="/anunciador/control" className={claseTab}>
-              Control
+            <NavLink to="/anunciador/orden" className={claseTab}>
+              Orden
             </NavLink>
           </nav>
 

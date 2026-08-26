@@ -24,7 +24,7 @@ const RankingPage = lazy(() => import('../pages/director/RankingPage'))
 const TitulosPage = lazy(() => import('../pages/director/TitulosPage'))
 const AnunciadorLayout = lazy(() => import('../layouts/AnunciadorLayout'))
 const ProyeccionPage = lazy(() => import('../pages/anunciador/ProyeccionPage'))
-const ControlPage = lazy(() => import('../pages/anunciador/ControlPage'))
+const OrdenPage = lazy(() => import('../pages/anunciador/OrdenPage'))
 
 // Fallback mientras se descarga el chunk del módulo
 function CargandoModulo() {
@@ -99,7 +99,7 @@ function AppRouter() {
             }
           >
             <Route index element={<ProyeccionPage />} />
-            <Route path="control" element={<ControlPage />} />
+            <Route path="orden" element={<OrdenPage />} />
           </Route>
 
           {/* Raíz y catch-all → login */}

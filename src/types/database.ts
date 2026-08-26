@@ -39,6 +39,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcement_order: {
+        Row: {
+          edition_id: string
+          id: string
+          position: number
+          title_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          edition_id: string
+          id?: string
+          position: number
+          title_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          edition_id?: string
+          id?: string
+          position?: number
+          title_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_order_edition_id_fkey"
+            columns: ["edition_id"]
+            isOneToOne: false
+            referencedRelation: "editions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_order_title_id_fkey"
+            columns: ["title_id"]
+            isOneToOne: false
+            referencedRelation: "titles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           changed_at: string
