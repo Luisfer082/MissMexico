@@ -4,6 +4,13 @@
 // El aislamiento (regla 5) lo garantiza la RLS: judge_round_judges y
 // judge_scores filtran por judge_id = auth.uid(). Aquí solo pedimos lo nuestro.
 //
+// Si el juez está asignado a VARIAS rondas de la edición puede elegir cuál
+// califica (pendiente de §5.1 cerrado por Luis el 2026-09-02: selector, no
+// impedir dos rondas abiertas). Antes se tomaba siempre la abierta más reciente
+// y no había forma de cambiar. La elección se DERIVA contra la lista en vez de
+// sincronizarse con un efecto: si la ronda elegida deja de existir (cambió la
+// edición activa por realtime) se cae sola al comportamiento de siempre.
+//
 // Las rondas se filtran por la EDICIÓN ACTIVA (fix 2026-08-04): antes se
 // tomaban todas las rondas asignadas al juez de cualquier edición y se elegía
 // la abierta más reciente, así que al cambiar de edición el juez se quedaba en
@@ -47,6 +54,9 @@ export interface ScoreJuezInicial {
 
 export interface UseRondaJuezResult {
   ronda: RondaActiva | null
+  /** Todas las rondas del juez en la edición activa, para el selector. */
+  rondas: RondaActiva[]
+  seleccionarRonda: (rondaId: string) => void
   retos: RetoRonda[]
   finalistas: FinalistaRonda[]
   scoresIniciales: ScoreJuezInicial[]
@@ -61,6 +71,9 @@ export function useRondaJuez(): UseRondaJuezResult {
   const edicionId = edicion?.id
 
   const [ronda, setRonda] = useState<RondaActiva | null>(null)
+  const [rondas, setRondas] = useState<RondaActiva[]>([])
+  // Ronda que el juez eligió a mano. null = la de siempre (abierta más reciente).
+  const [rondaElegida, setRondaElegida] = useState<string | null>(null)
   const [retos, setRetos] = useState<RetoRonda[]>([])
   const [finalistas, setFinalistas] = useState<FinalistaRonda[]>([])
   const [scoresIniciales, setScoresIniciales] = useState<ScoreJuezInicial[]>([])
@@ -72,6 +85,7 @@ export function useRondaJuez(): UseRondaJuezResult {
 
     const limpiar = () => {
       setRonda(null)
+      setRondas([])
       setRetos([])
       setFinalistas([])
       setScoresIniciales([])
@@ -127,9 +141,20 @@ export function useRondaJuez(): UseRondaJuezResult {
         if (cancelado) return
         if (rondasError) throw rondasError
 
-        // Solo las rondas cuya etapa pertenece a la edición activa.
-        const lista = (rondasData ?? []).filter((r) => stageIds.has(r.stage_id))
-        const activa = lista.find((r) => r.status === 'abierta') ?? lista[0] ?? null
+        // Solo las rondas cuya etapa pertenece a la edición activa. Abiertas
+        // primero: son las que el juez puede calificar, y la primera de la
+        // lista es el valor por defecto del selector.
+        const lista = (rondasData ?? [])
+          .filter((r) => stageIds.has(r.stage_id))
+          .sort((a, b) => Number(b.status === 'abierta') - Number(a.status === 'abierta'))
+
+        // La elegida a mano manda; si ya no está en la lista (cambió la edición
+        // activa) se cae al comportamiento de siempre sin efectos de por medio.
+        const activa =
+          lista.find((r) => r.id === rondaElegida) ??
+          lista.find((r) => r.status === 'abierta') ??
+          lista[0] ??
+          null
 
         if (!activa) {
           if (!cancelado) limpiar()
@@ -177,6 +202,15 @@ export function useRondaJuez(): UseRondaJuezResult {
         }
 
         if (!cancelado) {
+          setRondas(
+            lista.map((r) => ({
+              id: r.id,
+              stage_id: r.stage_id,
+              stage_name: r.stages?.name ?? '—',
+              status: r.status,
+              closed_at: r.closed_at,
+            })),
+          )
           setRonda({
             id: activa.id,
             stage_id: activa.stage_id,
@@ -202,7 +236,20 @@ export function useRondaJuez(): UseRondaJuezResult {
     return () => {
       cancelado = true
     }
-  }, [judgeId, edicionId, loadingEdicion])
+    // rondaElegida entra en las deps a propósito: cambiar de ronda recarga
+    // retos, finalistas y scores, que son distintos por ronda. Son 2 tandas y
+    // es una acción manual y poco frecuente; partir el hook en dos efectos
+    // añadiría riesgo al módulo más crítico del evento sin ganar nada.
+  }, [judgeId, edicionId, loadingEdicion, rondaElegida])
 
-  return { ronda, retos, finalistas, scoresIniciales, loading, error }
+  return {
+    ronda,
+    rondas,
+    seleccionarRonda: setRondaElegida,
+    retos,
+    finalistas,
+    scoresIniciales,
+    loading,
+    error,
+  }
 }

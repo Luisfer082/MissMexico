@@ -101,7 +101,8 @@ function FilaFinalista({ finalista, value, disabled, onCommit }: FilaProps) {
 }
 
 function CalificarPage() {
-  const { ronda, retos, finalistas, scoresIniciales, loading, error } = useRondaJuez()
+  const { ronda, rondas, seleccionarRonda, retos, finalistas, scoresIniciales, loading, error } =
+    useRondaJuez()
   const { getScore, setScore, estado, pendientes, rondaBloqueada } = useCalificacionJuez(
     ronda,
     scoresIniciales,
@@ -115,8 +116,23 @@ function CalificarPage() {
   // ronda del juez se reemplaza sola y con ella la etapa y las participantes.
   // Los puntajes pendientes NO se pierden: siguen atados a su ronda y se
   // sincronizan igual. Se avisa para que no parezca que se borró su captura.
+  //
+  // Un cambio de ronda hecho POR EL JUEZ desde el selector llega a este mismo
+  // efecto y dispararía el aviso, que ahí sería mentira: se marca para saltarlo.
   const rondaPrevia = useRef<string | null>(null)
+  const cambioManual = useRef(false)
+
+  const handleCambiarRonda = (rondaId: string) => {
+    cambioManual.current = true
+    seleccionarRonda(rondaId)
+  }
+
   useEffect(() => {
+    if (cambioManual.current) {
+      cambioManual.current = false
+      rondaPrevia.current = ronda?.id ?? null
+      return
+    }
     if (rondaPrevia.current && rondaPrevia.current !== (ronda?.id ?? null)) {
       toast('La edición activa cambió. Se cargó la ronda que corresponde.', {
         icon: '⚠️',
@@ -214,9 +230,30 @@ function CalificarPage() {
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <h1 className="text-lg font-bold text-slate-900 truncate">Calificación</h1>
-            <p className="text-sm text-brand-700 font-semibold truncate">
-              Etapa: {ronda.stage_name}
-            </p>
+            {/* Con una sola ronda no aparece nada: el módulo se ve igual que
+                siempre. El selector solo existe si el encargado asignó varias
+                (§5.1, resuelto por Luis 2026-09-02). */}
+            {rondas.length > 1 ? (
+              <select
+                value={ronda.id}
+                onChange={(e) => handleCambiarRonda(e.target.value)}
+                aria-label="Ronda que estás calificando"
+                className="mt-0.5 max-w-full min-h-[36px] pl-2 pr-7 text-sm font-semibold text-brand-700
+                  bg-white border border-brand-200 rounded-lg focus:outline-none
+                  focus:ring-2 focus:ring-brand-500"
+              >
+                {rondas.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.stage_name}
+                    {r.status === 'cerrada' ? ' (cerrada)' : ''}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="text-sm text-brand-700 font-semibold truncate">
+                Etapa: {ronda.stage_name}
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             {/* En celular el buscador se despliega a demanda: el header + la barra
