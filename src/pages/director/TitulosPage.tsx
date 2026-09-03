@@ -6,8 +6,10 @@
 // selección se perdía al cambiar de pestaña.
 //
 // El pool muestra a todas las participantes de la edición aún sin título, en el
-// orden del ranking manual (pendiente en §5.1: decidir si se restringe a las
-// finalistas de la última etapa).
+// orden del ranking manual, UNA A LA VEZ (§5.9, Luis 2026-09-02): antes eran ~32
+// tarjetas en un recuadro con scroll propio, imposible de operar en celular.
+// Ahora hay una tarjeta "en turno" con ‹ › y se asigna TOCANDO el slot; el drag
+// se conserva como atajo en tableta y laptop.
 
 import { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
@@ -105,6 +107,11 @@ function TitulosPage() {
 
   const [busqueda, setBusqueda] = useState('')
 
+  // Posición dentro del pool de la participante en turno. Al asignarla, el pool
+  // encoge y este mismo índice pasa a apuntar a la siguiente: no hay que
+  // moverlo, solo acotarlo cuando la lista se queda corta.
+  const [indice, setIndice] = useState(0)
+
   // Ratón y dedo necesitan gestos distintos: con el ratón basta desplazar un
   // poco; en táctil hay que MANTENER PRESIONADO ~110ms para no robarle el
   // gesto al scroll del pool.
@@ -155,6 +162,16 @@ function TitulosPage() {
         p.sash_number.toString() === q,
     )
   }, [participantes, ocupadas, busqueda, posicionEnRanking, ranking.length])
+
+  // Acotado, no sincronizado con un efecto: si el pool encoge (se asignó a la
+  // última, o la búsqueda filtró de más) el índice cae solo dentro de rango.
+  const indiceSeguro = pool.length === 0 ? 0 : Math.min(indice, pool.length - 1)
+  const enTurno = pool[indiceSeguro] ?? null
+
+  const handleBusqueda = (valor: string) => {
+    setBusqueda(valor)
+    setIndice(0)
+  }
 
   const handleDragEnd = (e: DragEndEvent) => {
     if (!e.over) return
@@ -277,33 +294,60 @@ function TitulosPage() {
         onDragCancel={() => setArrastrandoId(null)}
       >
         <div className="grid gap-4 md:gap-6 md:grid-cols-[minmax(13rem,1fr)_1.5fr] items-start">
-          {/* Pool de participantes */}
+          {/* Pool: una participante a la vez, en el orden del ranking manual */}
           <section className="bg-gray-100 rounded-xl p-4">
-            <h2 className="font-semibold text-slate-900 text-sm mb-3">
-              Participantes sin título ({pool.length})
-            </h2>
+            <div className="flex items-baseline justify-between gap-2 mb-3">
+              <h2 className="font-semibold text-slate-900 text-sm">Participante en turno</h2>
+              <span className="text-slate-500 text-xs flex-shrink-0">
+                {pool.length === 0 ? '0 de 0' : `${indiceSeguro + 1} de ${pool.length}`}
+              </span>
+            </div>
             <input
               type="search"
               value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
+              onChange={(e) => handleBusqueda(e.target.value)}
               placeholder="Buscar por nombre, región o número…"
               aria-label="Buscar participante"
-              className="mb-3 w-full min-h-[40px] px-3 text-sm text-slate-900 bg-white border border-gray-300
+              className="mb-3 w-full min-h-[44px] px-3 text-sm text-slate-900 bg-white border border-gray-300
                 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500
                 placeholder:text-slate-400"
             />
-            {pool.length === 0 ? (
-              <p className="text-slate-400 text-xs text-center py-4">
+            {enTurno === null ? (
+              <p className="text-slate-400 text-xs text-center py-6">
                 {busqueda.trim() !== ''
                   ? 'Ninguna participante coincide con la búsqueda.'
                   : 'Todas las participantes tienen título asignado.'}
               </p>
             ) : (
-              <ul className="space-y-2 max-h-[24rem] lg:max-h-[32rem] overflow-y-auto pr-1">
-                {pool.map((p) => (
-                  <TarjetaParticipante key={p.id} participante={p} />
-                ))}
-              </ul>
+              <>
+                <ul>
+                  <TarjetaParticipante key={enTurno.id} participante={enTurno} />
+                </ul>
+                <div className="flex items-center gap-2 mt-3">
+                  <button
+                    type="button"
+                    onClick={() => setIndice(indiceSeguro - 1)}
+                    disabled={indiceSeguro === 0}
+                    aria-label="Participante anterior"
+                    className="flex-1 min-h-[44px] rounded-lg border border-gray-300 bg-white text-sm
+                      font-medium text-slate-700 hover:bg-gray-50 transition-colors
+                      disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    ‹ Anterior
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIndice(indiceSeguro + 1)}
+                    disabled={indiceSeguro >= pool.length - 1}
+                    aria-label="Siguiente participante"
+                    className="flex-1 min-h-[44px] rounded-lg border border-gray-300 bg-white text-sm
+                      font-medium text-slate-700 hover:bg-gray-50 transition-colors
+                      disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Siguiente ›
+                  </button>
+                </div>
+              </>
             )}
           </section>
 
@@ -316,6 +360,8 @@ function TitulosPage() {
                   key={t.id}
                   titulo={t}
                   participante={participanteId ? (porId.get(participanteId) ?? null) : null}
+                  enTurno={enTurno}
+                  onAsignar={() => enTurno && asignar(t.id, enTurno.id)}
                   onQuitar={() => quitar(t.id)}
                 />
               )
@@ -335,9 +381,10 @@ function TitulosPage() {
       </DndContext>
 
       <p className="text-xs text-slate-400 mt-4">
-        Arrastra una participante del pool a un título para asignarla. Soltar sobre un título
-        ocupado reemplaza a la participante anterior. Cada participante puede tener un solo título.
-        Los cambios no se guardan hasta que pulses Guardar.
+        Las participantes aparecen en el orden del ranking, de mayor a menor. Toca el título al que
+        quieras asignar a la que está en turno y se avanza sola a la siguiente. También puedes
+        arrastrarla al título. Cada participante puede tener un solo título; los cambios no se
+        guardan hasta que pulses Guardar.
       </p>
     </div>
   )
