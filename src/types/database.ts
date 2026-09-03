@@ -788,6 +788,10 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      cerrar_etapa: {
+        Args: { p_stage_id: string }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "encargado" | "juez" | "director" | "anunciador"
