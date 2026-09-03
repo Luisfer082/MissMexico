@@ -149,7 +149,7 @@ function RankingPage() {
       <div className="flex flex-wrap items-center gap-3 mb-4">
         {rondas.length > 0 ? (
           <>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <label
                 htmlFor="ronda-ranking"
                 className="text-sm font-medium text-slate-700 whitespace-nowrap"
@@ -160,7 +160,7 @@ function RankingPage() {
                 id="ronda-ranking"
                 value={rondaEfectiva}
                 onChange={(e) => setRondaSeleccionada(e.target.value)}
-                className="text-sm border border-gray-200 rounded-md px-2.5 py-1.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="flex-1 min-h-[44px] text-sm border border-gray-200 rounded-md px-2.5 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
                 {rondas.map((r) => (
                   <option key={r.id} value={r.id}>
@@ -171,7 +171,7 @@ function RankingPage() {
             </div>
             <button
               onClick={ordenarPorPromedio}
-              className="px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm font-medium text-slate-600 hover:bg-gray-50 transition-colors"
+              className="w-full sm:w-auto px-3 min-h-[44px] rounded-md border border-gray-200 bg-white text-sm font-medium text-slate-600 hover:bg-gray-50 transition-colors"
             >
               Ordenar por promedio de esta ronda
             </button>

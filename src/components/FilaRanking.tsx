@@ -34,8 +34,13 @@ export function ContenidoFila({
         <p className="text-slate-400 text-xs truncate">{participante.region}</p>
       </div>
 
-      {/* Puntajes de referencia: no se editan aquí, solo orientan el orden manual */}
-      <div className="flex items-center gap-4 flex-shrink-0 text-right">
+      {/* Puntajes de referencia: no se editan aquí, solo orientan el orden manual.
+          En celular no caben en la misma línea que el nombre (quedarían ~100px
+          para el nombre y la región), así que bajan a una segunda línea. */}
+      <div
+        className="flex items-center justify-end gap-4 flex-shrink-0 text-right w-full order-last
+          border-t border-gray-100 pt-1.5 md:w-auto md:order-none md:border-0 md:pt-0"
+      >
         <div className="w-14">
           <p className="text-[10px] uppercase tracking-wide text-slate-400 leading-none">Jueces</p>
           <p className="text-sm font-semibold text-brand-700 tabular-nums leading-tight">
@@ -51,7 +56,7 @@ export function ContenidoFila({
       </div>
 
       <svg
-        className="w-5 h-5 text-slate-300 flex-shrink-0"
+        className="hidden md:block w-5 h-5 text-slate-300 flex-shrink-0"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -66,7 +71,7 @@ export function ContenidoFila({
 
 /** Clases compartidas por la fila real y la del overlay, para que se vean igual. */
 export const CLASES_FILA =
-  'flex items-center gap-3 px-3 py-2.5 bg-white rounded-lg border border-gray-200'
+  'flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 bg-white rounded-lg border border-gray-200'
 
 // Fila arrastrable del ranking manual del director. Usa @dnd-kit/sortable
 // (lista reordenable) a diferencia de los títulos, que son pool → slot fijo

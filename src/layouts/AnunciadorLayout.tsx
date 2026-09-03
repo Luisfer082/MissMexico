@@ -46,8 +46,11 @@ function AnunciadorLayout() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="sticky top-0 z-20 bg-slate-900 text-white">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
+        {/* En celular las 2 pestañas + identidad + Salir no caben en una fila
+            (~404px en 375px de ancho): la nav baja a su propia línea, igual que
+            en DirectorLayout. Desde sm: vuelve a la fila única de siempre. */}
+        <div className="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <div className="flex items-center gap-3 min-w-0 flex-1 sm:flex-none">
             <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-brand-700 rounded-lg flex items-center justify-center flex-shrink-0">
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round"
@@ -60,7 +63,7 @@ function AnunciadorLayout() {
             </div>
           </div>
 
-          <nav className="flex items-center gap-1">
+          <nav className="order-last sm:order-none w-full sm:w-auto sm:ml-auto flex items-center gap-1">
             <NavLink to="/anunciador" end className={claseTab}>
               Proyección
             </NavLink>
@@ -71,7 +74,7 @@ function AnunciadorLayout() {
 
           <button
             onClick={() => void handleSignOut()}
-            className="flex items-center gap-2 px-3 min-h-[44px] text-slate-300 hover:text-white
+            className="flex items-center gap-2 px-3 min-h-[44px] flex-shrink-0 text-slate-300 hover:text-white
               hover:bg-slate-800 rounded-lg text-sm font-medium transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>

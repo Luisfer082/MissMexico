@@ -235,14 +235,14 @@ function TitulosPage() {
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4 mb-5">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Títulos</h1>
           <p className="text-slate-500 text-sm mt-1">
             {ocupadas.size} de {titulos.length} asignados
           </p>
         </div>
-        <div className="text-right flex-shrink-0">
+        <div className="text-right flex-shrink-0 w-full sm:w-auto">
           {publicado ? (
             <button
               type="button"

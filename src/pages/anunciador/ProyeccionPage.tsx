@@ -140,7 +140,10 @@ function ProyeccionPage() {
           proyección. Siguen ocupando su sitio (opacity, no display) para que el
           título no se mueva al aparecer y desaparecer. */}
       <div
-        className={`flex-shrink-0 px-6 pb-6 transition-opacity duration-500 ${
+        // El padding inferior respeta la safe area: en celular los controles
+        // quedaban debajo de la barra del navegador y del gesto de inicio.
+        className={`flex-shrink-0 px-4 sm:px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]
+          transition-opacity duration-500 ${
           controlesVisibles ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >

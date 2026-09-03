@@ -210,7 +210,7 @@ function OrdenPage() {
         </DragOverlay>
       </DndContext>
 
-      <div className="flex items-center justify-between gap-3 pt-2">
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
         <p className="text-sm text-slate-500">
           {sinGuardar ? 'Tienes cambios sin guardar.' : 'Todo guardado.'}
         </p>
@@ -218,7 +218,7 @@ function OrdenPage() {
           type="button"
           onClick={handleGuardar}
           disabled={!sinGuardar || guardando}
-          className="min-h-[44px] px-5 rounded-lg bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300
+          className="w-full sm:w-auto min-h-[44px] px-5 rounded-lg bg-brand-600 hover:bg-brand-700 disabled:bg-gray-300
             disabled:cursor-not-allowed text-white font-semibold text-sm transition-colors
             focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500"
         >
