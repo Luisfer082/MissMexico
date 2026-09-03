@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { mensajeError } from '../utils/mensaje-error'
+import { useConsulta } from './useConsulta'
 import type { Tables } from '../types/database'
 import type { UsuarioCrearFormData, UsuarioEditarFormData } from '../schemas/usuario'
 
@@ -43,58 +44,47 @@ async function invocar(body: Record<string, unknown>): Promise<void> {
   if (error) throw new Error(await mensajeFuncion(error))
 }
 
+interface DatosUsuarios {
+  usuarios: Usuario[]
+  conHistorial: Set<string>
+}
+
 export function useUsuarios(): EstadoUsuarios {
-  const [usuarios, setUsuarios] = useState<Usuario[]>([])
-  const [conHistorial, setConHistorial] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [version, setVersion] = useState(0)
+  // useConsulta aporta loading + error + la bandera `cancelado` que evita que
+  // una respuesta lenta pise a una nueva. La consulta compuesta se adapta a su
+  // forma { data, error } devolviendo el error de la primera query que falle.
+  const { datos, loading, error, recargar } = useConsulta<DatosUsuarios>(
+    async () => {
+      // Los tres son independientes → una sola tanda paralela.
+      const [
+        { data: perfiles, error: errPerfiles },
+        { data: scores, error: errScores },
+        { data: asignaciones, error: errAsignaciones },
+      ] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id, full_name, email, role, active')
+          .order('full_name', { ascending: true }),
+        supabase.from('judge_scores').select('judge_id'),
+        supabase.from('judge_round_judges').select('judge_id'),
+      ])
 
-  const recargar = useCallback(() => setVersion((n) => n + 1), [])
+      const fallo = errPerfiles ?? errScores ?? errAsignaciones
+      if (fallo) return { data: null, error: fallo }
 
-  useEffect(() => {
-    let cancelado = false
+      const historial = new Set<string>()
+      for (const s of scores ?? []) historial.add(s.judge_id)
+      for (const a of asignaciones ?? []) historial.add(a.judge_id)
 
-    const cargar = async () => {
-      setLoading(true)
-      setError(null)
+      return { data: { usuarios: perfiles ?? [], conHistorial: historial }, error: null }
+    },
+    [],
+  )
 
-      try {
-        // Los tres son independientes → una sola tanda paralela.
-        const [
-          { data: perfiles, error: errPerfiles },
-          { data: scores, error: errScores },
-          { data: asignaciones, error: errAsignaciones },
-        ] = await Promise.all([
-          supabase
-            .from('profiles')
-            .select('id, full_name, email, role, active')
-            .order('full_name', { ascending: true }),
-          supabase.from('judge_scores').select('judge_id'),
-          supabase.from('judge_round_judges').select('judge_id'),
-        ])
-
-        if (cancelado) return
-        if (errPerfiles) throw errPerfiles
-        if (errScores) throw errScores
-        if (errAsignaciones) throw errAsignaciones
-
-        const historial = new Set<string>()
-        for (const s of scores ?? []) historial.add(s.judge_id)
-        for (const a of asignaciones ?? []) historial.add(a.judge_id)
-
-        setUsuarios(perfiles ?? [])
-        setConHistorial(historial)
-      } catch (err) {
-        if (!cancelado) setError(mensajeError(err, 'No se pudieron cargar los usuarios'))
-      } finally {
-        if (!cancelado) setLoading(false)
-      }
-    }
-
-    void cargar()
-    return () => { cancelado = true }
-  }, [version])
+  // Identidades estables mientras no llegan los datos: sin esto, cada render
+  // crearía un array y un Set nuevos y haría rerenderizar la lista sin motivo.
+  const vacio = useMemo(() => ({ usuarios: [], conHistorial: new Set<string>() }), [])
+  const { usuarios, conHistorial } = datos ?? vacio
 
   const crear = useCallback(async (datos: UsuarioCrearFormData) => {
     await invocar({ accion: 'crear', ...datos })

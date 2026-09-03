@@ -4,11 +4,11 @@
 // puntos capturados por el encargado (challenge_scores) sumados por
 // participante en toda la edición.
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { usePuntosJueces } from './usePuntosJueces'
+import { useConsulta } from './useConsulta'
 import type { FilaPuntoJuez, RondaPuntosJueces } from './usePuntosJueces'
-import { mensajeError } from '../utils/mensaje-error'
 
 export interface UsePromediosDirectorResult {
   rondas: RondaPuntosJueces[]
@@ -20,90 +20,74 @@ export interface UsePromediosDirectorResult {
   recargar: () => void
 }
 
+const SIN_TOTALES = new Map<string, number>()
+
 export function usePromediosDirector(edicionId: string | undefined): UsePromediosDirectorResult {
   const jueces = usePuntosJueces(edicionId)
 
-  const [totalesEncargado, setTotalesEncargado] = useState<Map<string, number>>(new Map())
-  const [loadingEncargado, setLoadingEncargado] = useState(true)
-  const [errorEncargado, setErrorEncargado] = useState<string | null>(null)
-  const [contador, setContador] = useState(0)
+  // Sin edición NO se pasa null a useConsulta: eso dejaría loading en true para
+  // siempre. Se devuelve un mapa vacío, que es lo que hacía antes.
+  const encargado = useConsulta<Map<string, number>>(
+    async () => {
+      if (!edicionId) return { data: SIN_TOTALES, error: null }
 
-  useEffect(() => {
-    let cancelado = false
+      // 1. Retos de la edición (challenge_scores no tiene edition_id directo)
+      const { data: retosData, error: retosError } = await supabase
+        .from('challenges')
+        .select('id')
+        .eq('edition_id', edicionId)
+      if (retosError) return { data: null, error: retosError }
 
-    const cargar = async () => {
-      if (!edicionId) {
-        if (!cancelado) {
-          setTotalesEncargado(new Map())
-          setLoadingEncargado(false)
-        }
-        return
+      const challengeIds = (retosData ?? []).map((r) => r.id)
+      if (challengeIds.length === 0) return { data: SIN_TOTALES, error: null }
+
+      // 2. Puntos del encargado, sumados por participante
+      const { data: scoresData, error: scoresError } = await supabase
+        .from('challenge_scores')
+        .select('participant_id, score')
+        .in('challenge_id', challengeIds)
+      if (scoresError) return { data: null, error: scoresError }
+
+      const mapa = new Map<string, number>()
+      for (const s of scoresData ?? []) {
+        mapa.set(s.participant_id, (mapa.get(s.participant_id) ?? 0) + s.score)
       }
+      return { data: mapa, error: null }
+    },
+    [edicionId],
+  )
 
-      if (!cancelado) {
-        setLoadingEncargado(true)
-        setErrorEncargado(null)
-      }
-
-      try {
-        // 1. Retos de la edición (challenge_scores no tiene edition_id directo)
-        const { data: retosData, error: retosError } = await supabase
-          .from('challenges')
-          .select('id')
-          .eq('edition_id', edicionId)
-        if (cancelado) return
-        if (retosError) throw retosError
-
-        const challengeIds = (retosData ?? []).map((r) => r.id)
-
-        // 2. Puntos del encargado, sumados por participante
-        const mapa = new Map<string, number>()
-        if (challengeIds.length > 0) {
-          const { data: scoresData, error: scoresError } = await supabase
-            .from('challenge_scores')
-            .select('participant_id, score')
-            .in('challenge_id', challengeIds)
-          if (cancelado) return
-          if (scoresError) throw scoresError
-
-          for (const s of scoresData ?? []) {
-            mapa.set(s.participant_id, (mapa.get(s.participant_id) ?? 0) + s.score)
-          }
-        }
-
-        if (!cancelado) {
-          setTotalesEncargado(mapa)
-          setLoadingEncargado(false)
-        }
-      } catch (err) {
-        if (!cancelado) {
-          setErrorEncargado(
-            mensajeError(err, 'No se pudieron cargar los puntos del encargado'),
-          )
-          setLoadingEncargado(false)
-        }
-      }
-    }
-
-    void cargar()
-    return () => {
-      cancelado = true
-    }
-  }, [edicionId, contador])
-
-  // jueces.recargar es estable (useCallback sin deps en usePuntosJueces)
   const recargarJueces = jueces.recargar
+  const recargarEncargado = encargado.recargar
   const recargar = useCallback(() => {
-    setContador((n) => n + 1)
+    recargarEncargado()
     recargarJueces()
-  }, [recargarJueces])
+  }, [recargarEncargado, recargarJueces])
 
-  return {
-    rondas: jueces.rondas,
-    puntajes: jueces.puntajes,
-    totalesEncargado,
-    loading: jueces.loading || loadingEncargado,
-    error: jueces.error ?? errorEncargado,
-    recargar,
-  }
+  const totalesEncargado = encargado.datos ?? SIN_TOTALES
+
+  return useMemo(
+    () => ({
+      rondas: jueces.rondas,
+      puntajes: jueces.puntajes,
+      totalesEncargado,
+      loading: jueces.loading || encargado.loading,
+      // Mensaje propio para el fallo de los puntos del encargado: el crudo de
+      // Supabase no le dice nada a quien opera. El de jueces ya viene formado.
+      error:
+        jueces.error ??
+        (encargado.error === null ? null : 'No se pudieron cargar los puntos del encargado'),
+      recargar,
+    }),
+    [
+      jueces.rondas,
+      jueces.puntajes,
+      jueces.loading,
+      jueces.error,
+      totalesEncargado,
+      encargado.loading,
+      encargado.error,
+      recargar,
+    ],
+  )
 }

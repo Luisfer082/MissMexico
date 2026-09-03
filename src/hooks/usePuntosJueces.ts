@@ -7,9 +7,10 @@
 // ya otorga SELECT sobre todas las filas de judge_scores a los roles
 // 'encargado' y 'director'. No se usa service_role.
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
+import { useConsulta } from './useConsulta'
 
 // ─── Tipos exportados ─────────────────────────────────────────────────────────
 
@@ -49,185 +50,160 @@ export interface UsePuntosJuecesResult {
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
+interface DatosPuntosJueces {
+  rondas: RondaPuntosJueces[]
+  puntajes: FilaPuntoJuez[]
+}
+
+const VACIO: DatosPuntosJueces = { rondas: [], puntajes: [] }
+
 export function usePuntosJueces(edicionId: string | undefined): UsePuntosJuecesResult {
-  const [rondas, setRondas] = useState<RondaPuntosJueces[]>([])
-  const [puntajes, setPuntajes] = useState<FilaPuntoJuez[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  // Incrementar este contador fuerza una recarga manual
-  const [contador, setContador] = useState(0)
+  // useConsulta aporta loading + error + la bandera `cancelado` que evita que
+  // una respuesta lenta pise a una nueva. La consulta es encadenada (cada paso
+  // depende del anterior), así que va en una sola función que devuelve la forma
+  // { data, error } que el hook espera.
+  //
+  // Sin edición activa NO se pasa null: eso dejaría el hook en loading para
+  // siempre y las pantallas en un spinner infinito. Se devuelven datos vacíos,
+  // que es lo que hacía el hook antes.
+  const { datos, loading, error, recargar } = useConsulta<DatosPuntosJueces>(
+    async () => {
+      if (!edicionId) return { data: VACIO, error: null }
 
-  const recargar = useCallback(() => setContador((n) => n + 1), [])
+      // 1. Etapas de la edición activa
+      const { data: stagesData, error: stagesError } = await supabase
+        .from('stages')
+        .select('id, name, order_num')
+        .eq('edition_id', edicionId)
+        .order('order_num', { ascending: true })
+      if (stagesError) return { data: null, error: stagesError }
 
-  useEffect(() => {
-    let cancelado = false
+      const stagesMap = new Map(
+        (stagesData ?? []).map((s) => [s.id, { name: s.name, order_num: s.order_num }]),
+      )
+      const stageIds = [...stagesMap.keys()]
+      if (stageIds.length === 0) return { data: VACIO, error: null }
 
-    const cargar = async () => {
-      if (!edicionId) {
-        if (!cancelado) {
-          setRondas([])
-          setPuntajes([])
-          setLoading(false)
+      // 2. Rondas de jueces vinculadas a esas etapas
+      const { data: rondasData, error: rondasError } = await supabase
+        .from('judge_rounds')
+        .select('id, stage_id, status, closed_at')
+        .in('stage_id', stageIds)
+        .order('created_at', { ascending: true })
+      if (rondasError) return { data: null, error: rondasError }
+
+      const rondasMapeadas: RondaPuntosJueces[] = (rondasData ?? []).map((r) => {
+        const stage = stagesMap.get(r.stage_id)
+        return {
+          id: r.id,
+          stage_id: r.stage_id,
+          stage_name: stage?.name ?? 'Etapa desconocida',
+          stage_order: stage?.order_num ?? 0,
+          // judge_rounds.status tiene check constraint ('abierta'|'cerrada')
+          status: r.status as 'abierta' | 'cerrada',
+          closed_at: r.closed_at,
         }
-        return
+      })
+
+      // Mapa stage_id -> round_id. judge_rounds tiene unique(stage_id), por eso es 1:1.
+      const stageToRound = new Map((rondasData ?? []).map((r) => [r.stage_id, r.id]))
+      const roundStageIds = (rondasData ?? []).map((r) => r.stage_id)
+
+      // Existen etapas pero ninguna tiene ronda de jueces aún.
+      if (roundStageIds.length === 0) {
+        return { data: { rondas: rondasMapeadas, puntajes: [] }, error: null }
       }
 
-      if (!cancelado) {
-        setLoading(true)
-        setError(null)
-      }
-
-      try {
-        // 1. Etapas de la edición activa
-        const { data: stagesData, error: stagesError } = await supabase
-          .from('stages')
-          .select('id, name, order_num')
-          .eq('edition_id', edicionId)
-          .order('order_num', { ascending: true })
-
-        if (cancelado) return
-        if (stagesError) throw stagesError
-
-        const stagesMap = new Map(
-          (stagesData ?? []).map((s) => [s.id, { name: s.name, order_num: s.order_num }]),
+      // 3. Judge scores de esas etapas con participante y reto embebidos.
+      //    La política RLS "judge_scores_select_admin" permite al encargado y al
+      //    director leer TODAS las filas — no hay que filtrar por judge_id.
+      const { data: scoresData, error: scoresError } = await supabase
+        .from('judge_scores')
+        // El select debe ser UN literal (sin concatenar): TypeScript solo
+        // conserva el tipo literal completo así, y el parser de tipos de
+        // Supabase lo necesita para inferir las columnas del join.
+        .select(
+          'id, judge_id, participant_id, challenge_id, stage_id, score, updated_at, participants!judge_scores_participant_id_fkey(full_name, region, sash_number), challenges!judge_scores_challenge_id_fkey(name, order_num)',
         )
-        const stageIds = [...stagesMap.keys()]
+        .in('stage_id', roundStageIds)
+      if (scoresError) return { data: null, error: scoresError }
 
-        if (stageIds.length === 0) {
-          if (!cancelado) {
-            setRondas([])
-            setPuntajes([])
-            setLoading(false)
-          }
-          return
-        }
+      // 4. Perfiles de los jueces para mostrar nombre legible.
+      //    judge_scores.judge_id referencia auth.users (no profiles), por eso es
+      //    una consulta aparte. El director puede leerlos desde la policy
+      //    profiles_select_director (migración 20260903000001); antes recibía
+      //    vacío y los nombres se degradaban a "Juez sin nombre".
+      const judgeIds = [...new Set((scoresData ?? []).map((s) => s.judge_id))]
+      const profileMap = new Map<string, string | null>()
 
-        // 2. Rondas de jueces vinculadas a esas etapas
-        const { data: rondasData, error: rondasError } = await supabase
-          .from('judge_rounds')
-          .select('id, stage_id, status, closed_at')
-          .in('stage_id', stageIds)
-          .order('created_at', { ascending: true })
+      if (judgeIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', judgeIds)
+        if (profilesError) return { data: null, error: profilesError }
 
-        if (cancelado) return
-        if (rondasError) throw rondasError
+        for (const p of profilesData ?? []) profileMap.set(p.id, p.full_name)
+      }
 
-        const rondasMapeadas: RondaPuntosJueces[] = (rondasData ?? []).map((r) => {
-          const stage = stagesMap.get(r.stage_id)
-          return {
-            id: r.id,
-            stage_id: r.stage_id,
-            stage_name: stage?.name ?? 'Etapa desconocida',
-            stage_order: stage?.order_num ?? 0,
-            // judge_rounds.status tiene check constraint ('abierta'|'cerrada')
-            status: r.status as 'abierta' | 'cerrada',
-            closed_at: r.closed_at,
-          }
+      // 5. Filas planas combinando scores + participante + reto + perfil
+      const filas: FilaPuntoJuez[] = []
+      for (const s of scoresData ?? []) {
+        const participant = s.participants
+        const challenge = s.challenges
+        // Ignorar si el join no resolvió (no debería con FKs activos y NOT NULL)
+        if (!participant || !challenge) continue
+
+        const fullNameJuez = profileMap.get(s.judge_id)
+        filas.push({
+          id: s.id,
+          judge_id: s.judge_id,
+          // fullNameJuez puede ser undefined (sin perfil) o null (perfil sin nombre)
+          judge_name: fullNameJuez ?? 'Juez sin nombre',
+          participant_id: s.participant_id,
+          participant_name: participant.full_name,
+          participant_region: participant.region,
+          sash_number: participant.sash_number,
+          challenge_id: s.challenge_id,
+          challenge_name: challenge.name,
+          challenge_order: challenge.order_num,
+          score: s.score,
+          updated_at: s.updated_at,
+          // Derivado: stage_id -> round_id via judge_rounds unique(stage_id)
+          round_id: stageToRound.get(s.stage_id) ?? '',
         })
-
-        // Mapa stage_id -> round_id. judge_rounds tiene unique(stage_id), por eso es 1:1.
-        const stageToRound = new Map(
-          (rondasData ?? []).map((r) => [r.stage_id, r.id]),
-        )
-
-        const roundStageIds = (rondasData ?? []).map((r) => r.stage_id)
-
-        if (roundStageIds.length === 0) {
-          // Existen etapas pero ninguna tiene ronda de jueces aún
-          if (!cancelado) {
-            setRondas(rondasMapeadas)
-            setPuntajes([])
-            setLoading(false)
-          }
-          return
-        }
-
-        // 3. Judge scores de esas etapas con participante y reto embebidos.
-        //    La política RLS "judge_scores_select_admin" permite al encargado
-        //    leer TODAS las filas — no es necesario filtrar por judge_id.
-        const { data: scoresData, error: scoresError } = await supabase
-          .from('judge_scores')
-          // El select debe ser UN literal (sin concatenar): TypeScript solo
-          // conserva el tipo literal completo así, y el parser de tipos de
-          // Supabase lo necesita para inferir las columnas del join.
-          .select(
-            'id, judge_id, participant_id, challenge_id, stage_id, score, updated_at, participants!judge_scores_participant_id_fkey(full_name, region, sash_number), challenges!judge_scores_challenge_id_fkey(name, order_num)',
-          )
-          .in('stage_id', roundStageIds)
-
-        if (cancelado) return
-        if (scoresError) throw scoresError
-
-        // 4. Perfiles de los jueces para mostrar nombre legible.
-        //    judge_scores.judge_id referencia auth.users (no profiles directamente),
-        //    por eso se hace una consulta separada a profiles.
-        const judgeIds = [...new Set((scoresData ?? []).map((s) => s.judge_id))]
-        const profileMap = new Map<string, string | null>()
-
-        if (judgeIds.length > 0) {
-          const { data: profilesData, error: profilesError } = await supabase
-            .from('profiles')
-            .select('id, full_name')
-            .in('id', judgeIds)
-
-          if (cancelado) return
-          if (profilesError) throw profilesError
-
-          for (const p of profilesData ?? []) {
-            profileMap.set(p.id, p.full_name)
-          }
-        }
-
-        // 5. Construir filas planas combinando scores + participante + reto + perfil
-        const filas: FilaPuntoJuez[] = []
-        for (const s of scoresData ?? []) {
-          const participant = s.participants
-          const challenge = s.challenges
-          // Ignorar si el join no resolvió (no debería ocurrir con FKs activos y NOT NULL)
-          if (!participant || !challenge) continue
-
-          const fullNameJuez = profileMap.get(s.judge_id)
-          filas.push({
-            id: s.id,
-            judge_id: s.judge_id,
-            // fullNameJuez puede ser undefined (sin perfil) o null (perfil sin nombre)
-            judge_name: fullNameJuez ?? 'Juez sin nombre',
-            participant_id: s.participant_id,
-            participant_name: participant.full_name,
-            participant_region: participant.region,
-            sash_number: participant.sash_number,
-            challenge_id: s.challenge_id,
-            challenge_name: challenge.name,
-            challenge_order: challenge.order_num,
-            score: s.score,
-            updated_at: s.updated_at,
-            // Derivado: stage_id -> round_id via judge_rounds unique(stage_id)
-            round_id: stageToRound.get(s.stage_id) ?? '',
-          })
-        }
-
-        if (!cancelado) {
-          setRondas(rondasMapeadas)
-          setPuntajes(filas)
-          setLoading(false)
-        }
-      } catch {
-        if (!cancelado) {
-          setError(
-            'No se pudieron cargar los puntos de jueces. Revisa tu conexión e intenta de nuevo.',
-          )
-          toast.error('Error al cargar los puntos de jueces')
-          setLoading(false)
-        }
       }
+
+      return { data: { rondas: rondasMapeadas, puntajes: filas }, error: null }
+    },
+    [edicionId],
+  )
+
+  // El toast de error se conserva del comportamiento anterior. Va en un efecto
+  // sobre el error y con un ref del último avisado, para no repetirlo en cada
+  // render mientras el error siga en pantalla.
+  const ultimoAvisado = useRef<string | null>(null)
+  useEffect(() => {
+    if (error !== null && error !== ultimoAvisado.current) {
+      toast.error('Error al cargar los puntos de jueces')
     }
+    ultimoAvisado.current = error
+  }, [error])
 
-    void cargar()
+  const { rondas, puntajes } = datos ?? VACIO
 
-    return () => {
-      cancelado = true
-    }
-  }, [edicionId, contador])
-
-  return { rondas, puntajes, loading, error, recargar }
+  return useMemo(
+    () => ({
+      rondas,
+      puntajes,
+      loading,
+      // Mensaje propio: el de Supabase no le dice nada a quien opera en vivo.
+      error:
+        error === null
+          ? null
+          : 'No se pudieron cargar los puntos de jueces. Revisa tu conexión e intenta de nuevo.',
+      recargar,
+    }),
+    [rondas, puntajes, loading, error, recargar],
+  )
 }
