@@ -31,6 +31,14 @@ export interface UseCalificacionJuezResult {
 const claveStorage = (roundId: string) => `juez_scores_${roundId}`
 const k = (participantId: string, challengeId: string) => `${participantId}:${challengeId}`
 
+// Máximo de filas por upsert. Una etapa real cabe de sobra en un solo lote
+// (18 finalistas × 3 retos = 54); el troceo es por prudencia ante etapas grandes.
+const TAMANO_LOTE = 100
+
+// Cada cuánto se reintenta mientras queden pendientes. El intervalo solo existe
+// si hay algo que enviar: antes corría siempre, aunque no hubiera nada.
+const MS_REINTENTO = 15000
+
 // Detecta el rechazo del trigger prevent_judge_score_on_closed_round: PostgREST
 // entrega los RAISE EXCEPTION de plpgsql con code P0001. Se distingue del error
 // de red para no reintentar en bucle lo que la BD siempre va a rechazar.
@@ -130,27 +138,43 @@ export function useCalificacionJuez(
     syncEnCursoRef.current = true
     setSyncing(true)
     try {
-      for (const [key, entrada] of pendientes) {
-        const [participantId, challengeId] = key.split(':')
-        const { error } = await supabase.from('judge_scores').upsert(
-          {
+      // Upsert POR LOTES (Fase 9, paso 6). Antes era un round-trip por score:
+      // un juez que capturó 18 finalistas × 3 retos sin red hacía 54 viajes
+      // secuenciales al volver la conexión. Ahora son uno (o unos pocos).
+      //
+      // El troceo es por prudencia, no por necesidad: 54 filas no incomodan a
+      // Postgres, pero una etapa grande no debería depender de eso.
+      for (let i = 0; i < pendientes.length; i += TAMANO_LOTE) {
+        const lote = pendientes.slice(i, i + TAMANO_LOTE)
+
+        const filas = lote.map(([key, entrada]) => {
+          const [participantId, challengeId] = key.split(':')
+          return {
             judge_id: user.id,
             participant_id: participantId,
             challenge_id: challengeId,
             stage_id: ronda.stage_id,
             score: entrada.score,
-          },
-          { onConflict: 'judge_id,participant_id,challenge_id' },
-        )
+          }
+        })
+
+        const { error } = await supabase
+          .from('judge_scores')
+          .upsert(filas, { onConflict: 'judge_id,participant_id,challenge_id' })
         if (error) throw error
 
-        // Marcar esta entrada como sincronizada (las demás siguen su curso).
+        // Confirmar el lote entero de una vez. Si el lote falla no se marca
+        // nada y se reenvía completo en el siguiente intento: los upserts son
+        // idempotentes, así que repetirlos no tiene coste ni riesgo.
         setScores((prev) => {
           const siguiente = new Map(prev)
-          const actual = siguiente.get(key)
-          // Solo confirmar si el valor no cambió mientras sincronizábamos.
-          if (actual && actual.score === entrada.score) {
-            siguiente.set(key, { ...actual, synced: true })
+          for (const [key, entrada] of lote) {
+            const actual = siguiente.get(key)
+            // Solo confirmar si el valor no cambió mientras sincronizábamos:
+            // el juez pudo corregir la nota con el envío en vuelo.
+            if (actual && actual.score === entrada.score) {
+              siguiente.set(key, { ...actual, synced: true })
+            }
           }
           persist(siguiente)
           return siguiente
@@ -210,16 +234,19 @@ export function useCalificacionJuez(
     }
   }, [sync])
 
-  // ─── Reintento periódico mientras haya pendientes ────────────────────────────
-  useEffect(() => {
-    const id = setInterval(() => void sync(), 15000)
-    return () => clearInterval(id)
-  }, [sync])
-
   const pendientes = useMemo(
     () => [...scores.values()].filter((v) => !v.synced).length,
     [scores],
   )
+
+  // ─── Reintento periódico SOLO mientras haya pendientes ──────────────────────
+  // Antes el intervalo corría siempre: despertaba cada 15s durante todo el
+  // evento para comprobar que no había nada que hacer. Ahora ni se programa.
+  useEffect(() => {
+    if (pendientes === 0) return
+    const id = setInterval(() => void sync(), MS_REINTENTO)
+    return () => clearInterval(id)
+  }, [sync, pendientes])
 
   // 'bloqueado' solo cuando quedaron pendientes que ya no se pueden enviar; si
   // todo alcanzó a sincronizarse antes del cierre, se reporta 'sincronizado'.
@@ -234,5 +261,9 @@ export function useCalificacionJuez(
         ? 'sincronizando'
         : 'sincronizado'
 
-  return { getScore, setScore, estado, pendientes, rondaBloqueada, syncNow: () => void sync() }
+  // Memoizado: sin esto era una función nueva en cada render, y quien la
+  // recibiera en un efecto o un memo lo veía cambiar sin motivo.
+  const syncNow = useCallback(() => void sync(), [sync])
+
+  return { getScore, setScore, estado, pendientes, rondaBloqueada, syncNow }
 }
