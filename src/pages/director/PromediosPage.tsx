@@ -8,20 +8,7 @@ import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import { usePromediosDirector } from '../../hooks/usePromediosDirector'
 import { useAppStore } from '../../stores/useAppStore'
 import { formatearPuntaje } from '../../utils/puntaje'
-
-interface FilaPromedio {
-  participant_id: string
-  name: string
-  region: string
-  sash: number
-  /** challenge_id -> { suma, cuenta } para promediar por reto */
-  porReto: Map<string, { suma: number; cuenta: number }>
-  suma: number
-  cuenta: number
-  promedio: number
-  totalEncargado: number
-  posicion: number
-}
+import { calcularFilasPromedio } from '../../utils/promedios'
 
 function PromediosPage() {
   const { edicion, loading: loadingEdicion, error: errorEdicion } = useEdicionActiva()
@@ -64,39 +51,10 @@ function PromediosPage() {
 
   // Ranking: promedio de jueces por participante (global y por reto) + total
   // del encargado. Orden desc por promedio, desempate asc por banda.
-  const filas = useMemo<FilaPromedio[]>(() => {
-    const acc = new Map<string, Omit<FilaPromedio, 'promedio' | 'posicion'>>()
-    for (const p of puntajesDeRonda) {
-      let fila = acc.get(p.participant_id)
-      if (!fila) {
-        fila = {
-          participant_id: p.participant_id,
-          name: p.participant_name,
-          region: p.participant_region,
-          sash: p.sash_number,
-          porReto: new Map(),
-          suma: 0,
-          cuenta: 0,
-          totalEncargado: totalesEncargado.get(p.participant_id) ?? 0,
-        }
-        acc.set(p.participant_id, fila)
-      }
-      const reto = fila.porReto.get(p.challenge_id) ?? { suma: 0, cuenta: 0 }
-      reto.suma += p.score
-      reto.cuenta += 1
-      fila.porReto.set(p.challenge_id, reto)
-      fila.suma += p.score
-      fila.cuenta += 1
-    }
-
-    return [...acc.values()]
-      .map((f) => ({ ...f, promedio: f.cuenta > 0 ? f.suma / f.cuenta : 0, posicion: 0 }))
-      .sort((a, b) => {
-        if (b.promedio !== a.promedio) return b.promedio - a.promedio
-        return a.sash - b.sash
-      })
-      .map((f, i) => ({ ...f, posicion: i + 1 }))
-  }, [puntajesDeRonda, totalesEncargado])
+  const filas = useMemo(
+    () => calcularFilasPromedio(puntajesDeRonda, totalesEncargado),
+    [puntajesDeRonda, totalesEncargado],
+  )
 
   // ─── Estados de carga / error / vacío ─────────────────────────────────────
 

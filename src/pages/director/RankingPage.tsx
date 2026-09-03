@@ -25,6 +25,7 @@ import { useAppStore } from '../../stores/useAppStore'
 import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import { usePromediosDirector } from '../../hooks/usePromediosDirector'
 import FilaRanking, { ContenidoFila, CLASES_FILA } from '../../components/FilaRanking'
+import { calcularFilasPromedio, promediosPorParticipante } from '../../utils/promedios'
 
 function RankingPage() {
   const loading = useAppStore((s) => s.directorLoading)
@@ -46,17 +47,12 @@ function RankingPage() {
     return rondas[0]?.id ?? ''
   }, [rondas, rondaSeleccionada])
 
-  // participant_id -> promedio de jueces en la ronda seleccionada
+  // participant_id -> promedio de jueces en la ronda seleccionada. Mismo
+  // cálculo que la pestaña Promedios: las dos comparten la función pura, así
+  // que no pueden discrepar (antes cada una tenía su propio useMemo).
   const promedios = useMemo(() => {
-    const acc = new Map<string, { suma: number; cuenta: number }>()
-    for (const p of puntajes) {
-      if (p.round_id !== rondaEfectiva) continue
-      const v = acc.get(p.participant_id) ?? { suma: 0, cuenta: 0 }
-      v.suma += p.score
-      v.cuenta += 1
-      acc.set(p.participant_id, v)
-    }
-    return new Map([...acc].map(([id, v]) => [id, v.suma / v.cuenta]))
+    const deLaRonda = puntajes.filter((p) => p.round_id === rondaEfectiva)
+    return promediosPorParticipante(calcularFilasPromedio(deLaRonda))
   }, [puntajes, rondaEfectiva])
 
   // Ratón y dedo necesitan gestos distintos. Con el ratón basta un pequeño
