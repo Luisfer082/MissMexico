@@ -19,6 +19,8 @@ interface EstadoUsuarios {
   crear: (datos: UsuarioCrearFormData) => Promise<void>
   actualizar: (userId: string, datos: UsuarioEditarFormData) => Promise<void>
   cambiarEstado: (userId: string, active: boolean) => Promise<void>
+  /** Pone una contraseña nueva sin recrear el usuario (conserva su historial). */
+  resetearPassword: (userId: string, password: string) => Promise<void>
   eliminar: (userId: string) => Promise<void>
 }
 
@@ -101,10 +103,27 @@ export function useUsuarios(): EstadoUsuarios {
     recargar()
   }, [recargar])
 
+  // No recarga la lista: no cambia nada visible y quien llama necesita mostrar
+  // la contraseña nueva, que es la única vez que se puede leer.
+  const resetearPassword = useCallback(async (userId: string, password: string) => {
+    await invocar({ accion: 'password', userId, password })
+  }, [])
+
   const eliminar = useCallback(async (userId: string) => {
     await invocar({ accion: 'eliminar', userId })
     recargar()
   }, [recargar])
 
-  return { usuarios, conHistorial, loading, error, recargar, crear, actualizar, cambiarEstado, eliminar }
+  return {
+    usuarios,
+    conHistorial,
+    loading,
+    error,
+    recargar,
+    crear,
+    actualizar,
+    cambiarEstado,
+    resetearPassword,
+    eliminar,
+  }
 }

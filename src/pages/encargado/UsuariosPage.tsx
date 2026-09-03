@@ -5,6 +5,7 @@ import { useAppStore } from '../../stores/useAppStore'
 import { etiquetaRol, rolesUsuario } from '../../schemas/usuario'
 import { mensajeError } from '../../utils/mensaje-error'
 import UsuarioModal from '../../components/UsuarioModal'
+import PasswordModal from '../../components/PasswordModal'
 import ConfirmDialog from '../../components/ConfirmDialog'
 
 // Colores por rol para distinguirlos de un vistazo en la lista.
@@ -28,8 +29,17 @@ interface Grupo {
 }
 
 function UsuariosPage() {
-  const { usuarios, conHistorial, loading, error, crear, actualizar, cambiarEstado, eliminar } =
-    useUsuarios()
+  const {
+    usuarios,
+    conHistorial,
+    loading,
+    error,
+    crear,
+    actualizar,
+    cambiarEstado,
+    resetearPassword,
+    eliminar,
+  } = useUsuarios()
 
   // Para no ofrecerle al encargado acciones sobre su propia cuenta.
   const miId = useAppStore((s) => s.profile?.id)
@@ -38,6 +48,7 @@ function UsuariosPage() {
   const [usuarioEditando, setUsuarioEditando] = useState<Usuario | undefined>(undefined)
   const [usuarioAEliminar, setUsuarioAEliminar] = useState<Usuario | null>(null)
   const [usuarioADesactivar, setUsuarioADesactivar] = useState<Usuario | null>(null)
+  const [usuarioPassword, setUsuarioPassword] = useState<Usuario | null>(null)
 
   const handleAbrirNuevo = () => {
     setUsuarioEditando(undefined)
@@ -207,6 +218,14 @@ function UsuariosPage() {
                         >
                           Editar
                         </button>
+                        <button
+                          onClick={() => setUsuarioPassword(u)}
+                          title="Generar una contraseña nueva sin borrar su historial"
+                          className="px-3 py-1 text-xs font-medium text-slate-600 border border-gray-200
+                            hover:bg-gray-100 rounded-md transition-colors"
+                        >
+                          Contraseña
+                        </button>
                         {u.active ? (
                           <button
                             onClick={() => setUsuarioADesactivar(u)}
@@ -261,6 +280,14 @@ function UsuariosPage() {
             setModalAbierto(false)
             setUsuarioEditando(undefined)
           }}
+        />
+      )}
+
+      {usuarioPassword && (
+        <PasswordModal
+          usuario={usuarioPassword}
+          onAplicar={resetearPassword}
+          onClose={() => setUsuarioPassword(null)}
         />
       )}
 

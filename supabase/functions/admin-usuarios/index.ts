@@ -184,6 +184,33 @@ Deno.serve(async (req: Request) => {
       return responder({ ok: true })
     }
 
+    // ---------- PASSWORD (resetear contraseña) ----------
+    // Fase 9, paso 9. Antes, si un juez perdia su contraseña habia que
+    // eliminarlo y recrearlo, lo cual con judge_scores.judge_id en cascade se
+    // llevaba TODAS sus calificaciones por delante (reglas 1 y 3). En un evento
+    // en vivo eso es inaceptable: ahora se le pone una nueva y sigue siendo el
+    // mismo usuario, con su historial intacto.
+    if (accion === 'password') {
+      const userId = String(payload.userId ?? '')
+      const password = String(payload.password ?? '')
+
+      if (!userId) return error('Falta el usuario', 400)
+      if (password.length < 8) return error('La contraseña debe tener al menos 8 caracteres', 400)
+
+      const { data: destino } = await admin
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .single()
+
+      if (!destino) return error('El usuario no existe', 404)
+
+      const { error: errPass } = await admin.auth.admin.updateUserById(userId, { password })
+      if (errPass) return error(errPass.message, 400)
+
+      return responder({ ok: true })
+    }
+
     // ---------- ESTADO (desactivar / reactivar) ----------
     if (accion === 'estado') {
       const userId = String(payload.userId ?? '')
