@@ -20,6 +20,12 @@ function EtapasPage() {
   // Etapa pendiente de confirmar borrado (null = sin confirmación abierta)
   const [etapaAEliminar, setEtapaAEliminar] = useState<Etapa | null>(null)
 
+  // Cierre de etapa: irreversible (regla 7), así que pide confirmación DOBLE.
+  // `pasoCierre` es qué diálogo se muestra; la etapa se limpia al terminar.
+  const [etapaACerrar, setEtapaACerrar] = useState<Etapa | null>(null)
+  const [pasoCierre, setPasoCierre] = useState<1 | 2>(1)
+  const [cerrando, setCerrando] = useState(false)
+
   const edicionId = edicion?.id
 
   const { datos, loading: loadingEtapas, error: errorEtapas, recargar } = useConsulta<Etapa[]>(
@@ -60,6 +66,37 @@ function EtapasPage() {
         error: (err: unknown) => mensajeError(err, 'Error al eliminar'),
       }
     )
+  }
+
+  const handleCancelarCierre = () => {
+    setEtapaACerrar(null)
+    setPasoCierre(1)
+  }
+
+  // Todo el cierre (rank, snapshot, ronda de jueces, status) ocurre en la RPC
+  // cerrar_etapa, en una sola transacción: o se hace completo o no se hace.
+  const handleConfirmarCierre = async () => {
+    if (!etapaACerrar) return
+    const etapa = etapaACerrar
+    handleCancelarCierre()
+    setCerrando(true)
+
+    try {
+      await toast.promise(
+        (async () => {
+          const { error } = await supabase.rpc('cerrar_etapa', { p_stage_id: etapa.id })
+          if (error) throw error
+          recargar()
+        })(),
+        {
+          loading: 'Cerrando etapa...',
+          success: `Etapa "${etapa.name}" cerrada`,
+          error: (err: unknown) => mensajeError(err, 'Error al cerrar la etapa'),
+        }
+      )
+    } finally {
+      setCerrando(false)
+    }
   }
 
   const handleAbrirNuevo = () => {
@@ -169,6 +206,16 @@ function EtapasPage() {
                         >
                           Editar
                         </button>
+                        {!cerrada && (
+                          <button
+                            onClick={() => setEtapaACerrar(e)}
+                            disabled={cerrando}
+                            className="px-3 py-1 text-xs font-medium text-white bg-slate-700 border border-slate-700
+                              hover:bg-slate-800 rounded-md transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                          >
+                            Cerrar etapa
+                          </button>
+                        )}
                         <button
                           onClick={() => setEtapaAEliminar(e)}
                           disabled={cerrada}
@@ -194,6 +241,28 @@ function EtapasPage() {
           etapa={etapaEditando}
           onClose={handleCerrarModal}
           onGuardado={handleGuardado}
+        />
+      )}
+
+      {/* Confirmación DOBLE de cierre (regla 7). El primer diálogo explica qué
+          pasa; el segundo, en rojo, es el que de verdad cierra. */}
+      {etapaACerrar && pasoCierre === 1 && (
+        <ConfirmDialog
+          titulo="Cerrar etapa"
+          mensaje={`Vas a cerrar la etapa "${etapaACerrar.name}". Se calculará el ranking final, se guardará un registro inmutable de los resultados y se cerrará la ronda de jueces si sigue abierta. Las calificaciones y los participantes de esta etapa quedarán congelados.`}
+          textoConfirmar="Continuar"
+          onConfirmar={() => setPasoCierre(2)}
+          onCancelar={handleCancelarCierre}
+        />
+      )}
+      {etapaACerrar && pasoCierre === 2 && (
+        <ConfirmDialog
+          titulo="¿Seguro? Esta acción no se puede deshacer"
+          mensaje={`Una etapa cerrada no se puede reabrir ni eliminar. Confirma que quieres cerrar definitivamente "${etapaACerrar.name}".`}
+          textoConfirmar="Cerrar definitivamente"
+          peligro
+          onConfirmar={() => void handleConfirmarCierre()}
+          onCancelar={handleCancelarCierre}
         />
       )}
 
