@@ -206,9 +206,12 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
     challengeIdsSetRef.current = challengeIdsSet
   }, [challengeIdsSet])
 
-  // Clave estable para la dependencia del useEffect de realtime: evita
-  // cadenas de objetos Set que siempre serían nuevas referencias.
-  const challengeIdsKey = retos.map((r) => r.id).join(',')
+  // El canal NO depende de QUÉ retos hay, solo de que haya alguno: el handler
+  // lee el set desde el ref, que siempre está al día. Antes la dependencia era
+  // la lista completa de ids, así que editar un reto en vivo destruía y
+  // recreaba la suscripción, con una ventana de milisegundos sin realtime en
+  // la que se perdían eventos. (Fase 9, paso 7.)
+  const hayRetos = retos.length > 0
 
   useEffect(() => {
     // No suscribir hasta tener edición y al menos un reto cargado
@@ -276,10 +279,10 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
       setRealtimeConectado(false)
       void supabase.removeChannel(canal)
     }
-    // challengeIdsKey cambia cuando los retos cambian; challengeIdsSetRef es un ref,
-    // no necesita estar en deps (siempre está actualizado vía su propio useEffect).
+    // challengeIdsSetRef es un ref: siempre está actualizado vía su propio
+    // useEffect, así que el canal no necesita rehacerse cuando cambian los retos.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [edicionId, challengeIdsKey])
+  }, [edicionId, hayRetos])
 
   // ─── Realtime de judge_scores ─────────────────────────────────────────────
   // Mantiene el total combinado del leaderboard en vivo a medida que los jueces
@@ -294,7 +297,10 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
     participantIdsSetRef.current = participantIdsSet
   }, [participantIdsSet])
 
-  const participantIdsKey = participantes.map((p) => p.id).join(',')
+  // Mismo criterio que el canal de challenge_scores: basta con saber si hay
+  // participantes, no cuáles. Con la lista completa en deps, dar de alta una
+  // participante en vivo recreaba la suscripción.
+  const hayParticipantes = participantes.length > 0
 
   useEffect(() => {
     if (!edicionId || participantes.length === 0) return
@@ -345,10 +351,10 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
     return () => {
       void supabase.removeChannel(canal)
     }
-    // participantIdsKey cambia cuando cambian los participantes; el ref del set
-    // se mantiene actualizado por su propio effect, no va en deps.
+    // El ref del set se mantiene actualizado por su propio effect, así que no
+    // hace falta rehacer el canal cuando cambia la lista de participantes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [edicionId, participantIdsKey])
+  }, [edicionId, hayParticipantes])
 
   // ─── updateScore ──────────────────────────────────────────────────────────
   // Actualización optimista: modifica el Map local antes de ir a la BD.
