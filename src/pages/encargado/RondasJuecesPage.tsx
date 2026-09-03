@@ -308,9 +308,13 @@ function RondasJuecesPage() {
                 <option value="">Selecciona una etapa…</option>
                 {etapas.map((et) => {
                   const ocupada = etapasConRonda.has(et.id)
+                  // Una etapa cerrada congela sus judge_scores por trigger: una
+                  // ronda nueva ahí no serviría para calificar nada.
+                  const cerrada = et.status === 'cerrada'
+                  const nota = ocupada ? ' (ya tiene ronda)' : cerrada ? ' (cerrada)' : ''
                   return (
-                    <option key={et.id} value={et.id} disabled={ocupada}>
-                      {et.name}{ocupada ? ' (ya tiene ronda)' : ''}
+                    <option key={et.id} value={et.id} disabled={ocupada || cerrada}>
+                      {et.name}{nota}
                     </option>
                   )
                 })}
