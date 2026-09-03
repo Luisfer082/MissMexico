@@ -81,6 +81,35 @@ export type Database = {
           },
         ]
       }
+      announcement_progress: {
+        Row: {
+          edition_id: string
+          revealed_count: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          edition_id: string
+          revealed_count?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          edition_id?: string
+          revealed_count?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_progress_edition_id_fkey"
+            columns: ["edition_id"]
+            isOneToOne: true
+            referencedRelation: "editions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           changed_at: string

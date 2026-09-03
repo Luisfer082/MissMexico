@@ -15,9 +15,17 @@
 // no el cliente. edition_publications se lee aquí solo para poder distinguir
 // "todavía no han enviado nada" de "no hay títulos asignados".
 //
-// DEUDA CONOCIDA: el AVANCE de revelados (cuántos van) sigue en memoria, así
-// que una recarga reinicia el show aunque el orden se conserve. Persistirlo
-// además exige decidir qué pasa si dos pestañas avanzan a la vez (Fase 9).
+// El AVANCE de revelados también se persiste, en announcement_progress (Fase 9,
+// paso 3): antes vivía en memoria y una recarga en pleno evento reiniciaba el
+// show delante del público. Se escribe de forma OPTIMISTA — el estado local
+// cambia al instante y la BD se actualiza en segundo plano — porque en vivo el
+// título tiene que aparecer al pulsar el botón, no cuando conteste la red. Si
+// esa escritura falla, el show continúa (manda el estado local) y solo se
+// pierde la protección ante recarga; se expone en anuncioAvanceError para que
+// la pantalla lo indique sin interrumpir.
+//
+// CONCURRENCIA: no hay bloqueo. Es una sola pantalla por diseño; si dos
+// pestañas avanzaran a la vez, la última escritura gana.
 
 import type { StateCreator } from 'zustand'
 import { supabase } from '../../lib/supabase'
@@ -48,12 +56,16 @@ export interface AnuncioState {
   /** El orden se movió y todavía no se ha guardado. */
   anuncioOrdenSinGuardar: boolean
   anuncioGuardando: boolean
+  /** Falló la persistencia del avance: el show sigue, pero una recarga lo perdería. */
+  anuncioAvanceError: string | null
   /** Carga los títulos asignados de la edición y su orden de revelación. */
   cargarAnuncio: (edicionId: string) => Promise<void>
   /** Revela el siguiente título. No pasa del total. */
   revelarSiguiente: () => void
   /** Reinicia el show: vuelve a cero revelados. */
   reiniciarAnuncio: () => void
+  /** Guarda el avance en announcement_progress. No lanza: el show manda. */
+  persistirAvance: (count: number) => Promise<void>
   /** Mueve un título de una posición a otra (solo en memoria). */
   reordenarAnuncio: (desde: number, hasta: number) => void
   /** Persiste el orden actual en announcement_order. */
@@ -74,6 +86,7 @@ export const createAnuncioSlice: StateCreator<AnuncioState> = (set, get) => ({
   anuncioEdicionId: null,
   anuncioOrdenSinGuardar: false,
   anuncioGuardando: false,
+  anuncioAvanceError: null,
 
   cargarAnuncio: async (edicionId) => {
     set({ anuncioLoading: true, anuncioError: null })
@@ -84,6 +97,7 @@ export const createAnuncioSlice: StateCreator<AnuncioState> = (set, get) => ({
         { data: asignaciones, error: errAsign },
         { data: publicacion, error: errPub },
         { data: orden, error: errOrden },
+        { data: avance, error: errAvance },
       ] = await Promise.all([
         supabase
           .from('title_assignments')
@@ -98,11 +112,17 @@ export const createAnuncioSlice: StateCreator<AnuncioState> = (set, get) => ({
           .from('announcement_order')
           .select('title_id, position')
           .eq('edition_id', edicionId),
+        supabase
+          .from('announcement_progress')
+          .select('revealed_count')
+          .eq('edition_id', edicionId)
+          .maybeSingle(),
       ])
 
       if (errAsign) throw errAsign
       if (errPub) throw errPub
       if (errOrden) throw errOrden
+      if (errAvance) throw errAvance
 
       // Orden guardado por el anunciador, si existe. Un título que no esté en
       // la tabla (asignado después de guardar el orden) cae al final y ahí se
@@ -127,9 +147,11 @@ export const createAnuncioSlice: StateCreator<AnuncioState> = (set, get) => ({
 
       set({
         anuncioTitulos: titulos,
-        // Recargar reinicia el show: evita quedar con un contador mayor al
-        // número de títulos si el director retiró o cambió asignaciones.
-        anuncioReveladosCount: 0,
+        // Se restaura el avance guardado, ACOTADO al número de títulos
+        // actuales: si el director retiró o cambió asignaciones después de que
+        // el show avanzara, un contador viejo apuntaría fuera de la lista.
+        anuncioReveladosCount: Math.min(avance?.revealed_count ?? 0, titulos.length),
+        anuncioAvanceError: null,
         anuncioPublicado: publicacion?.published ?? false,
         anuncioEdicionId: edicionId,
         anuncioOrdenSinGuardar: false,
@@ -146,10 +168,45 @@ export const createAnuncioSlice: StateCreator<AnuncioState> = (set, get) => ({
   revelarSiguiente: () => {
     const { anuncioReveladosCount, anuncioTitulos } = get()
     if (anuncioReveladosCount >= anuncioTitulos.length) return
-    set({ anuncioReveladosCount: anuncioReveladosCount + 1 })
+    const siguiente = anuncioReveladosCount + 1
+    // Primero la pantalla, después la red: en vivo el título debe aparecer al
+    // pulsar, no cuando conteste Supabase.
+    set({ anuncioReveladosCount: siguiente })
+    void get().persistirAvance(siguiente)
   },
 
-  reiniciarAnuncio: () => set({ anuncioReveladosCount: 0 }),
+  reiniciarAnuncio: () => {
+    set({ anuncioReveladosCount: 0 })
+    void get().persistirAvance(0)
+  },
+
+  persistirAvance: async (count) => {
+    const { anuncioEdicionId } = get()
+    if (!anuncioEdicionId) return
+
+    try {
+      const userId = await idUsuarioActual()
+      const { error } = await supabase
+        .from('announcement_progress')
+        .upsert(
+          {
+            edition_id: anuncioEdicionId,
+            revealed_count: count,
+            updated_by: userId,
+          },
+          { onConflict: 'edition_id' },
+        )
+      if (error) throw error
+      // Solo se limpia si había un fallo previo: evita un set en cada revelado.
+      if (get().anuncioAvanceError !== null) set({ anuncioAvanceError: null })
+    } catch (err) {
+      // No se relanza: el show NO se interrumpe porque falle la escritura. Lo
+      // único que se pierde es poder recuperar el avance tras una recarga.
+      set({
+        anuncioAvanceError: mensajeError(err, 'No se pudo guardar el avance del show'),
+      })
+    }
+  },
 
   reordenarAnuncio: (desde, hasta) => {
     const { anuncioTitulos } = get()

@@ -18,18 +18,27 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 const MS_OCULTAR_CONTROLES = 4000
 
 function ProyeccionPage() {
-  const { titulos, reveladosCount, revelarSiguiente, reiniciar, loading, error, publicado } =
-    useAppStore(
-      useShallow((s) => ({
-        titulos: s.anuncioTitulos,
-        reveladosCount: s.anuncioReveladosCount,
-        revelarSiguiente: s.revelarSiguiente,
-        reiniciar: s.reiniciarAnuncio,
-        loading: s.anuncioLoading,
-        error: s.anuncioError,
-        publicado: s.anuncioPublicado,
-      })),
-    )
+  const {
+    titulos,
+    reveladosCount,
+    revelarSiguiente,
+    reiniciar,
+    loading,
+    error,
+    publicado,
+    avanceError,
+  } = useAppStore(
+    useShallow((s) => ({
+      titulos: s.anuncioTitulos,
+      reveladosCount: s.anuncioReveladosCount,
+      revelarSiguiente: s.revelarSiguiente,
+      reiniciar: s.reiniciarAnuncio,
+      loading: s.anuncioLoading,
+      error: s.anuncioError,
+      publicado: s.anuncioPublicado,
+      avanceError: s.anuncioAvanceError,
+    })),
+  )
 
   const [controlesVisibles, setControlesVisibles] = useState(true)
   const [confirmarReinicio, setConfirmarReinicio] = useState(false)
@@ -153,6 +162,15 @@ function ProyeccionPage() {
               ? `Ceremonia completa · ${titulos.length} títulos revelados`
               : `Siguiente: ${siguiente?.titulo ?? ''} · ${reveladosCount} de ${titulos.length}`}
           </p>
+
+          {/* El avance no se pudo guardar. NO se interrumpe el show: solo se
+              avisa de que una recarga volvería a empezar. Vive dentro de los
+              controles, así que se desvanece con ellos y el público no lo ve. */}
+          {avanceError !== null && (
+            <p className="text-center text-amber-400/80 text-xs">
+              No se pudo guardar el avance: si recargas, el show volvería a empezar.
+            </p>
+          )}
 
           <button
             type="button"
