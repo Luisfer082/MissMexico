@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import Modal from './Modal'
 
 interface Props {
@@ -7,6 +8,10 @@ interface Props {
   textoCancelar?: string
   // Estilo rojo para acciones destructivas (eliminar, cerrar etapa, etc.)
   peligro?: boolean
+  // Contenido extra debajo del mensaje (p. ej. el aviso de calificaciones faltantes)
+  children?: ReactNode
+  // Deshabilita confirmar mientras se carga algo que el usuario debe ver antes
+  confirmarDeshabilitado?: boolean
   onConfirmar: () => void
   onCancelar: () => void
 }
@@ -19,6 +24,8 @@ function ConfirmDialog({
   textoConfirmar = 'Confirmar',
   textoCancelar = 'Cancelar',
   peligro = false,
+  children,
+  confirmarDeshabilitado = false,
   onConfirmar,
   onCancelar,
 }: Props) {
@@ -26,6 +33,7 @@ function ConfirmDialog({
     <Modal titulo={titulo} onClose={onCancelar}>
       <div className="px-6 py-5">
         <p className="text-sm text-slate-600 leading-relaxed">{mensaje}</p>
+        {children}
 
         <div className="flex gap-3 pt-5">
           <button
@@ -39,8 +47,9 @@ function ConfirmDialog({
           <button
             type="button"
             onClick={onConfirmar}
+            disabled={confirmarDeshabilitado}
             className={`flex-1 py-2 px-4 text-white font-medium rounded-lg text-sm transition-colors
-              focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                 peligro
                   ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
                   : 'bg-brand-600 hover:bg-brand-700 focus:ring-brand-500'
