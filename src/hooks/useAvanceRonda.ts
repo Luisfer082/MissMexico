@@ -23,9 +23,17 @@ export interface UseAvanceRondaResult {
   recargar: () => void
 }
 
+// El resultado lleva la etapa a la que pertenece. useConsulta conserva los datos
+// de la carga anterior y arranca la nueva en un efecto, así que al reabrir el
+// diálogo hay un render con el avance de OTRA etapa y loading=false.
+interface ResultadoAvance {
+  stageId: string
+  avance: AvanceRonda | null
+}
+
 async function cargarAvance(
   stageId: string,
-): Promise<{ data: AvanceRonda | null; error: { message: string } | null }> {
+): Promise<{ data: ResultadoAvance | null; error: { message: string } | null }> {
   try {
     // 1. Ronda (con jueces y retos), participantes y scores de la etapa, en paralelo.
     const [rondaRes, participantesRes, scoresRes] = await Promise.all([
@@ -45,7 +53,7 @@ async function cargarAvance(
     if (scoresRes.error) return { data: null, error: scoresRes.error }
 
     const ronda = rondaRes.data
-    if (!ronda) return { data: null, error: null }
+    if (!ronda) return { data: { stageId, avance: null }, error: null }
 
     const judgeIds = ronda.judge_round_judges.map((j) => j.judge_id)
     const retoIds = ronda.judge_round_challenges.map((c) => c.challenge_id)
@@ -79,7 +87,7 @@ async function cargarAvance(
       (participantesRes.data ?? []).map((p) => p.participant_id),
       scoresRes.data ?? [],
     )
-    return { data: avance, error: null }
+    return { data: { stageId, avance }, error: null }
   } catch (err) {
     return {
       data: null,
@@ -89,9 +97,17 @@ async function cargarAvance(
 }
 
 export function useAvanceRonda(stageId: string | null): UseAvanceRondaResult {
-  const { datos, loading, error, recargar } = useConsulta<AvanceRonda | null>(
+  const { datos, loading, error, recargar } = useConsulta<ResultadoAvance>(
     stageId ? () => cargarAvance(stageId) : null,
     [stageId],
   )
-  return { avance: datos, loading, error, recargar }
+  // Datos o error de otra etapa (o de antes de abrir el diálogo) = todavía cargando.
+  const vigente = datos !== null && datos.stageId === stageId
+  const sinResultado = !vigente && !error
+  return {
+    avance: vigente ? datos.avance : null,
+    loading: loading || sinResultado,
+    error: loading ? null : error,
+    recargar,
+  }
 }
