@@ -5,6 +5,8 @@ import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import { useConsulta } from '../../hooks/useConsulta'
 import EtapaModal from '../../components/EtapaModal'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import AvanceRonda from '../../components/AvanceRonda'
+import { useAvanceRonda } from '../../hooks/useAvanceRonda'
 import type { Tables } from '../../types/database'
 import { mensajeError } from '../../utils/mensaje-error'
 
@@ -25,6 +27,12 @@ function EtapasPage() {
   const [etapaACerrar, setEtapaACerrar] = useState<Etapa | null>(null)
   const [pasoCierre, setPasoCierre] = useState<1 | 2>(1)
   const [cerrando, setCerrando] = useState(false)
+
+  // Calificaciones de jueces que todavía no llegaron a la BD: se perderían al
+  // cerrar (cerrar_etapa cierra la ronda). Se consulta al abrir el diálogo.
+  const avanceCierre = useAvanceRonda(etapaACerrar?.id ?? null)
+  const faltanCalificaciones =
+    avanceCierre.avance !== null && !avanceCierre.avance.completa
 
   const edicionId = edicion?.id
 
@@ -251,15 +259,23 @@ function EtapasPage() {
           titulo="Cerrar etapa"
           mensaje={`Vas a cerrar la etapa "${etapaACerrar.name}". Se calculará el ranking final, se guardará un registro inmutable de los resultados y se cerrará la ronda de jueces si sigue abierta. Las calificaciones y los participantes de esta etapa quedarán congelados.`}
           textoConfirmar="Continuar"
+          confirmarDeshabilitado={avanceCierre.loading}
           onConfirmar={() => setPasoCierre(2)}
           onCancelar={handleCancelarCierre}
-        />
+        >
+          <AvanceRonda
+            avance={avanceCierre.avance}
+            loading={avanceCierre.loading}
+            error={avanceCierre.error}
+            onRevisar={avanceCierre.recargar}
+          />
+        </ConfirmDialog>
       )}
       {etapaACerrar && pasoCierre === 2 && (
         <ConfirmDialog
           titulo="¿Seguro? Esta acción no se puede deshacer"
           mensaje={`Una etapa cerrada no se puede reabrir ni eliminar. Confirma que quieres cerrar definitivamente "${etapaACerrar.name}".`}
-          textoConfirmar="Cerrar definitivamente"
+          textoConfirmar={faltanCalificaciones ? 'Cerrar de todos modos' : 'Cerrar definitivamente'}
           peligro
           onConfirmar={() => void handleConfirmarCierre()}
           onCancelar={handleCancelarCierre}
