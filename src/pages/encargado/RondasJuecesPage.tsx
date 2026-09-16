@@ -5,6 +5,8 @@ import { useRondasJueces } from '../../hooks/useRondasJueces'
 import { rondaJuezSchema } from '../../schemas/rondaJuez'
 import { mensajeError } from '../../utils/mensaje-error'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import AvanceRonda from '../../components/AvanceRonda'
+import { useAvanceRonda } from '../../hooks/useAvanceRonda'
 import SelectorParticipantesDrawer from '../../components/SelectorParticipantesDrawer'
 import type { RondaResumen } from '../../hooks/useRondasJueces'
 
@@ -50,6 +52,10 @@ function RondasJuecesPage() {
 
   // Ronda pendiente de cerrar (null = sin confirmación abierta)
   const [rondaACerrar, setRondaACerrar] = useState<RondaResumen | null>(null)
+  // Avance de captura al abrir el diálogo: lo no sincronizado se pierde al cerrar.
+  const avanceCierre = useAvanceRonda(rondaACerrar?.stage_id ?? null)
+  const faltanCalificaciones =
+    avanceCierre.avance !== null && !avanceCierre.avance.completa
 
   // Ronda pendiente de eliminar (null = sin confirmación abierta)
   const [rondaAEliminar, setRondaAEliminar] = useState<RondaResumen | null>(null)
@@ -586,11 +592,19 @@ function RondasJuecesPage() {
         <ConfirmDialog
           titulo="Cerrar ronda de jueces"
           mensaje={`¿Cerrar la ronda de "${rondaACerrar.stageName}"? Las calificaciones de los jueces quedarán congeladas mientras la ronda permanezca cerrada.`}
-          textoConfirmar="Sí, cerrar ronda"
+          textoConfirmar={faltanCalificaciones ? 'Cerrar de todos modos' : 'Sí, cerrar ronda'}
           peligro
+          confirmarDeshabilitado={avanceCierre.loading}
           onConfirmar={() => void handleConfirmarCerrar()}
           onCancelar={() => setRondaACerrar(null)}
-        />
+        >
+          <AvanceRonda
+            avance={avanceCierre.avance}
+            loading={avanceCierre.loading}
+            error={avanceCierre.error}
+            onRevisar={avanceCierre.recargar}
+          />
+        </ConfirmDialog>
       )}
 
       {/* Confirmación de eliminación de ronda */}
