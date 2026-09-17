@@ -80,6 +80,11 @@ function RondasJuecesPage() {
     [rondas],
   )
 
+  // Nombres de los jueces de cada ronda: la tarjeta muestra quién califica, no
+  // solo cuántos, para que un juez dado de baja (o uno al que se le perdió la
+  // asignación) se vea sin abrir el formulario.
+  const juezPorId = useMemo(() => new Map(jueces.map((j) => [j.id, j])), [jueces])
+
   // Los jueces dados de baja no se ofrecen para rondas nuevas, pero si ya
   // estaban asignados a la ronda que se edita siguen visibles: si no, el
   // encargado no podría quitarlos y no entendería por qué falta uno.
@@ -494,6 +499,24 @@ function RondasJuecesPage() {
                           <p className="text-xs text-slate-500 mt-0.5">
                             {r.numRetos} {r.numRetos === 1 ? 'reto' : 'retos'} · {r.numJueces} {r.numJueces === 1 ? 'juez' : 'jueces'} · {r.numParticipantes} {r.numParticipantes === 1 ? 'participante' : 'participantes'}
                           </p>
+                          {r.judgeIds.length > 0 && (
+                            <ul className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-xs">
+                              {r.judgeIds.map((jid) => {
+                                const j = juezPorId.get(jid)
+                                const inactivo = j !== undefined && !j.active
+                                return (
+                                  <li
+                                    key={jid}
+                                    className={inactivo ? 'text-slate-400 italic' : 'text-slate-600'}
+                                    title={inactivo ? 'Juez dado de baja' : undefined}
+                                  >
+                                    {j?.full_name ?? 'Juez sin nombre'}
+                                    {inactivo && ' (Inactivo)'}
+                                  </li>
+                                )
+                              })}
+                            </ul>
+                          )}
                         </div>
                         {/* Dos badges: estado de la ronda y estado de la etapa dueña */}
                         <div className="flex flex-col items-end gap-1.5 shrink-0">
