@@ -24,10 +24,15 @@ export interface AvanceJuez extends JuezRonda {
 }
 
 export interface AvanceRonda {
+  /**
+   * TODOS los jueces asignados a la ronda, activos e inactivos. Se listan
+   * completo el aviso: si a alguno se le pierde la asignación, se nota en
+   * pantalla en vez de desaparecer en silencio.
+   * Orden: primero a los que les falta más, los inactivos al final.
+   */
+  jueces: AvanceJuez[]
   /** Jueces activos a los que les falta al menos una calificación. */
   incompletos: AvanceJuez[]
-  /** Jueces dados de baja pero asignados a la ronda, completos o no. */
-  inactivos: AvanceJuez[]
   totalJuecesActivos: number
   /** Ningún juez activo tiene calificaciones faltantes. */
   completa: boolean
@@ -53,27 +58,27 @@ export function contarAvance(
     capturadasPorJuez.set(s.judge_id, (capturadasPorJuez.get(s.judge_id) ?? 0) + 1)
   }
 
-  const incompletos: AvanceJuez[] = []
-  const inactivos: AvanceJuez[] = []
-  let totalJuecesActivos = 0
+  const todos: AvanceJuez[] = jueces.map((juez) => ({
+    ...juez,
+    capturadas: capturadasPorJuez.get(juez.id) ?? 0,
+    esperadas,
+  }))
 
-  for (const juez of jueces) {
-    const avance: AvanceJuez = {
-      ...juez,
-      capturadas: capturadasPorJuez.get(juez.id) ?? 0,
-      esperadas,
-    }
-    if (!juez.activo) {
-      inactivos.push(avance)
-      continue
-    }
-    totalJuecesActivos++
-    if (avance.capturadas < esperadas) incompletos.push(avance)
+  // Los inactivos al final; dentro de cada grupo, los que más les falta primero.
+  todos.sort(
+    (a, b) =>
+      Number(b.activo) - Number(a.activo) ||
+      a.capturadas - b.capturadas ||
+      a.nombre.localeCompare(b.nombre),
+  )
+
+  const activos = todos.filter((j) => j.activo)
+  const incompletos = activos.filter((j) => j.capturadas < esperadas)
+
+  return {
+    jueces: todos,
+    incompletos,
+    totalJuecesActivos: activos.length,
+    completa: incompletos.length === 0,
   }
-
-  // Los que más les falta, primero.
-  incompletos.sort((a, b) => a.capturadas - b.capturadas || a.nombre.localeCompare(b.nombre))
-  inactivos.sort((a, b) => a.nombre.localeCompare(b.nombre))
-
-  return { incompletos, inactivos, totalJuecesActivos, completa: incompletos.length === 0 }
 }

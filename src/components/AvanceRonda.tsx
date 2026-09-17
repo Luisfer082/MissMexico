@@ -10,6 +10,9 @@ interface Props {
 // Aviso de calificaciones faltantes dentro del diálogo de cierre (etapa o
 // ronda). Solo informa: nunca bloquea el cierre, para que un juez que se fue
 // o se quedó sin batería no deje la etapa sin poder cerrarse en pleno evento.
+//
+// Se listan TODOS los jueces de la ronda, no solo a los que les falta: si a
+// alguno se le pierde la asignación tiene que verse en pantalla.
 function AvanceRonda({ avance, loading, error, onRevisar }: Props) {
   if (loading) {
     return (
@@ -31,56 +34,59 @@ function AvanceRonda({ avance, loading, error, onRevisar }: Props) {
   // Sin ronda de jueces: no hay calificaciones que se puedan perder.
   if (!avance) return null
 
+  const faltan = !avance.completa
+
   return (
-    <div className="mt-4 space-y-3">
-      {avance.completa ? (
-        <p className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-800">
-          {avance.totalJuecesActivos === 1
+    <div
+      className={`mt-4 rounded-lg border p-3 text-sm ${
+        faltan
+          ? 'border-amber-300 bg-amber-50 text-amber-900'
+          : 'border-emerald-300 bg-emerald-50 text-emerald-800'
+      }`}
+    >
+      <p className="font-medium">
+        {faltan
+          ? 'Faltan calificaciones de jueces'
+          : avance.totalJuecesActivos === 1
             ? 'El juez envió todas sus calificaciones.'
             : `Los ${avance.totalJuecesActivos} jueces enviaron todas sus calificaciones.`}
-        </p>
-      ) : (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-          <p className="font-medium">Faltan calificaciones de estos jueces:</p>
-          <ListaJueces jueces={avance.incompletos} />
+      </p>
+
+      <ul className="mt-2 space-y-0.5">
+        {avance.jueces.map((j) => (
+          <FilaJuez key={j.id} juez={j} />
+        ))}
+      </ul>
+
+      {faltan && (
+        <>
           <p className="mt-2">
             Si alguno calificó sin conexión y todavía no sincroniza, esas calificaciones se
             perderán al cerrar.
           </p>
           <BotonRevisar onClick={onRevisar} />
-        </div>
-      )}
-
-      {avance.inactivos.length > 0 && (
-        <div className="text-sm text-slate-500">
-          <p>Jueces dados de baja asignados a la ronda:</p>
-          <ListaJueces jueces={avance.inactivos} inactivos />
-        </div>
+        </>
       )}
     </div>
   )
 }
 
-interface ListaJuecesProps {
-  jueces: AvanceJuez[]
-  inactivos?: boolean
+interface FilaJuezProps {
+  juez: AvanceJuez
 }
 
-function ListaJueces({ jueces, inactivos = false }: ListaJuecesProps) {
+function FilaJuez({ juez }: FilaJuezProps) {
+  const completo = juez.capturadas >= juez.esperadas
   return (
-    <ul className="mt-1 space-y-0.5">
-      {jueces.map((j) => (
-        <li key={j.id} className="flex justify-between gap-3">
-          <span className="truncate">
-            {j.nombre}
-            {inactivos && ' (Inactivo)'}
-          </span>
-          <span className="shrink-0 tabular-nums">
-            {j.capturadas} de {j.esperadas}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <li className={`flex justify-between gap-3 ${juez.activo ? '' : 'opacity-60'}`}>
+      <span className="truncate">
+        {juez.nombre}
+        {!juez.activo && <span className="ml-1 text-xs">(Inactivo)</span>}
+      </span>
+      <span className={`shrink-0 tabular-nums ${completo ? '' : 'font-semibold'}`}>
+        {juez.capturadas} de {juez.esperadas}
+      </span>
+    </li>
   )
 }
 

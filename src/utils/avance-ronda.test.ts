@@ -55,13 +55,23 @@ describe('contarAvance', () => {
     expect(avance.incompletos[0].capturadas).toBe(4)
   })
 
-  it('los inactivos van aparte y no vuelven incompleta la ronda', () => {
+  it('un inactivo no vuelve incompleta la ronda, pero sigue en la lista', () => {
     const scores = completo('a', RETOS, PARTICIPANTES)
     const avance = contarAvance([juez('a'), juez('x', false)], RETOS, PARTICIPANTES, scores)
     expect(avance.completa).toBe(true)
     expect(avance.totalJuecesActivos).toBe(1)
-    expect(avance.inactivos).toHaveLength(1)
-    expect(avance.inactivos[0]).toMatchObject({ id: 'x', capturadas: 0, esperadas: 6 })
+    expect(avance.incompletos).toEqual([])
+    // Se sigue viendo, al final y marcado como inactivo: que a un juez se le
+    // pierda la asignación tiene que notarse en pantalla, no en silencio.
+    expect(avance.jueces.map((j) => j.id)).toEqual(['a', 'x'])
+    expect(avance.jueces[1]).toMatchObject({ id: 'x', activo: false, capturadas: 0 })
+  })
+
+  it('lista a todos los jueces asignados con su conteo', () => {
+    const scores = completo('a', ['r1'], PARTICIPANTES)
+    const avance = contarAvance([juez('a'), juez('b')], RETOS, PARTICIPANTES, scores)
+    expect(avance.jueces).toHaveLength(2)
+    expect(avance.jueces.map((j) => j.capturadas)).toEqual([0, 3])
   })
 
   it('ronda sin retos o sin participantes no espera nada', () => {
@@ -73,6 +83,7 @@ describe('contarAvance', () => {
     const avance = contarAvance([], RETOS, PARTICIPANTES, [])
     expect(avance.completa).toBe(true)
     expect(avance.totalJuecesActivos).toBe(0)
+    expect(avance.jueces).toEqual([])
   })
 
   it('ordena incompletos del que más le falta al que menos', () => {
