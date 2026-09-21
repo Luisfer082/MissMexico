@@ -4,6 +4,7 @@
 // ranking lo da el promedio de jueces (desc).
 
 import { useMemo } from 'react'
+import BotonesExportar from '../../components/BotonesExportar'
 import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import { usePromediosDirector } from '../../hooks/usePromediosDirector'
 import { useAppStore } from '../../stores/useAppStore'
@@ -107,17 +108,20 @@ function PromediosPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Promedios</h1>
           <p className="text-slate-500 text-sm mt-1">{edicion.name}</p>
         </div>
-        <button
-          onClick={recargar}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm font-medium text-slate-600 hover:bg-gray-50 transition-colors"
-        >
-          Actualizar
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <BotonesExportar edicion={edicion} />
+          <button
+            onClick={recargar}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-200 bg-white text-sm font-medium text-slate-600 hover:bg-gray-50 transition-colors"
+          >
+            Actualizar
+          </button>
+        </div>
       </div>
 
       {/* Selector de ronda + estado */}

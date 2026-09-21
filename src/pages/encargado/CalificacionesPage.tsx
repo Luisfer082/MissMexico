@@ -4,6 +4,7 @@ import { useCalificaciones } from '../../hooks/useCalificaciones'
 import MatrizCalificaciones from '../../components/MatrizCalificaciones'
 import LeaderboardPanel from '../../components/LeaderboardPanel'
 import PuntosJueces from '../../components/PuntosJueces'
+import BotonesExportar from '../../components/BotonesExportar'
 
 // Pestañas disponibles en la página
 type Pestania = 'captura' | 'leaderboard' | 'jueces'
@@ -107,7 +108,10 @@ function CalificacionesPage() {
             {edicion.name} — {participantes.length} participantes · {retos.length} retos
           </p>
         </div>
-        <BadgeEnVivo conectado={realtimeConectado} />
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <BotonesExportar edicion={edicion} />
+          <BadgeEnVivo conectado={realtimeConectado} />
+        </div>
       </div>
 
       {/* Tabs — segmented control */}
