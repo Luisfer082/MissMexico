@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '../stores/useAppStore'
+import FondoApp from '../components/FondoApp'
 
 function NoAutorizado() {
   const navigate = useNavigate()
@@ -11,8 +12,9 @@ function NoAutorizado() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="text-center">
+    <div className="relative isolate min-h-screen flex items-center justify-center px-4">
+      <FondoApp />
+      <div className="text-center bg-white rounded-2xl shadow-xl shadow-black/20 px-8 py-10 max-w-sm w-full">
         <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
           <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
