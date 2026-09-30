@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../stores/useAppStore'
+import FondoApp from '../components/FondoApp'
 
 interface NavItemProps {
   to: string
@@ -19,8 +20,8 @@ function NavItem({ to, icon, label }: NavItemProps) {
         `relative flex items-center justify-center lg:justify-start gap-3 px-3 min-h-[44px]
         rounded-lg text-sm font-medium transition-colors duration-150 ${
           isActive
-            ? 'bg-slate-800 text-white'
-            : 'text-slate-300 hover:bg-slate-800/60 hover:text-white'
+            ? 'bg-white/15 text-white'
+            : 'text-brand-100 hover:bg-white/10 hover:text-white'
         }`
       }
     >
@@ -28,7 +29,7 @@ function NavItem({ to, icon, label }: NavItemProps) {
         <>
           {/* Barra indicadora de marca en el item activo */}
           {isActive && (
-            <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-brand-500" />
+            <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-1 rounded-r-full bg-celeste-400" />
           )}
           <span className="w-5 h-5 flex-shrink-0">{icon}</span>
           <span className="hidden lg:inline">{label}</span>
@@ -110,13 +111,14 @@ function EncargadoLayout() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="relative isolate flex h-screen">
+      <FondoApp />
       {/* Sidebar */}
-      <aside className="w-16 lg:w-60 flex-shrink-0 bg-slate-900 flex flex-col">
+      <aside className="w-16 lg:w-60 flex-shrink-0 bg-marino-950/85 backdrop-blur flex flex-col">
         {/* Logo */}
-        <div className="px-2 lg:px-4 py-5 border-b border-slate-700">
+        <div className="px-2 lg:px-4 py-5 border-b border-white/10">
           <div className="flex items-center justify-center lg:justify-start gap-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-brand-700 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 bg-gradient-to-br from-celeste-400 to-brand-700 rounded-lg flex items-center justify-center flex-shrink-0">
               {/* Corona: identidad del certamen */}
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round"
@@ -125,7 +127,7 @@ function EncargadoLayout() {
             </div>
             <div className="hidden lg:block">
               <p className="text-white text-sm font-semibold leading-tight">Miss México</p>
-              <p className="text-slate-400 text-xs">Calificaciones en vivo</p>
+              <p className="text-brand-200 text-xs">Calificaciones en vivo</p>
             </div>
           </div>
         </div>
@@ -143,25 +145,25 @@ function EncargadoLayout() {
         </nav>
 
         {/* Footer del sidebar: usuario y cerrar sesión */}
-        <div className="px-2 lg:px-3 py-4 border-t border-slate-700">
+        <div className="px-2 lg:px-3 py-4 border-t border-white/10">
           <div className="hidden lg:flex items-center gap-2 mb-3 px-1">
-            <div className="w-7 h-7 bg-slate-600 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-slate-200 text-xs font-medium">
+            <div className="w-7 h-7 bg-brand-700 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-white text-xs font-medium">
                 {profile?.full_name?.charAt(0)?.toUpperCase() ?? 'U'}
               </span>
             </div>
             <div className="min-w-0">
-              <p className="text-slate-200 text-xs font-medium truncate">
+              <p className="text-white text-xs font-medium truncate">
                 {profile?.full_name ?? 'Usuario'}
               </p>
-              <p className="text-slate-500 text-xs">Encargado</p>
+              <p className="text-brand-200 text-xs">Encargado</p>
             </div>
           </div>
           <button
             onClick={() => void handleSignOut()}
             title="Cerrar sesión"
             className="w-full flex items-center justify-center lg:justify-start gap-2 px-3
-              min-h-[44px] text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg
+              min-h-[44px] text-brand-100 hover:text-white hover:bg-white/10 rounded-lg
               text-xs font-medium transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
@@ -174,8 +176,11 @@ function EncargadoLayout() {
       </aside>
 
       {/* Área de contenido */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-6xl mx-auto px-4 lg:px-8 py-6 lg:py-8">
+      {/* Panel claro sobre el fondo, con el mismo gray-50 de antes para que
+          tablas y tarjetas se vean igual. El scroll sigue siendo del main. */}
+      <main className="flex-1 overflow-y-auto p-3 lg:p-6">
+        <div className="max-w-6xl mx-auto min-h-full px-4 lg:px-8 py-6 lg:py-8 bg-gray-50/95
+          rounded-2xl shadow-xl shadow-black/20">
           <Outlet />
         </div>
       </main>
