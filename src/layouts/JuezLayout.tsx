@@ -1,6 +1,7 @@
 import { Outlet, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAppStore } from '../stores/useAppStore'
+import FondoApp from '../components/FondoApp'
 
 // Layout del módulo Juez. A diferencia del encargado, usa un header superior
 // (sin sidebar) porque los jueces operan en tablet y necesitan el ancho completo.
@@ -19,12 +20,13 @@ function JuezLayout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="relative isolate min-h-screen">
+      <FondoApp />
       {/* Header */}
-      <header className="sticky top-0 z-20 bg-slate-900 text-white">
+      <header className="sticky top-0 z-20 bg-marino-950/85 backdrop-blur text-white">
         <div className="max-w-3xl mx-auto px-4 h-[68px] flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-brand-700 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 bg-gradient-to-br from-celeste-400 to-brand-700 rounded-lg flex items-center justify-center flex-shrink-0">
               <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
                 <path strokeLinecap="round" strokeLinejoin="round"
                   d="M5 16L3 7l5.5 4L12 5l3.5 6L21 7l-2 9H5zm0 0h14v2a1 1 0 01-1 1H6a1 1 0 01-1-1v-2z" />
@@ -32,13 +34,13 @@ function JuezLayout() {
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold leading-tight truncate">Miss México</p>
-              <p className="text-slate-400 text-xs truncate">{profile?.full_name ?? 'Juez'}</p>
+              <p className="text-brand-200 text-xs truncate">{profile?.full_name ?? 'Juez'}</p>
             </div>
           </div>
           <button
             onClick={() => void handleSignOut()}
-            className="flex items-center gap-2 px-3 min-h-[44px] text-slate-300 hover:text-white
-              hover:bg-slate-800 rounded-lg text-sm font-medium transition-colors"
+            className="flex items-center gap-2 px-3 min-h-[44px] text-brand-100 hover:text-white
+              hover:bg-white/10 rounded-lg text-sm font-medium transition-colors"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
               <path strokeLinecap="round" strokeLinejoin="round"
@@ -49,8 +51,11 @@ function JuezLayout() {
         </div>
       </header>
 
-      {/* Contenido */}
-      <main className="max-w-3xl mx-auto px-4 py-6">
+      {/* Contenido: panel claro sobre el fondo. Es el mismo gray-50 de antes,
+          así que tarjetas, tablas y la barra sticky se ven igual que siempre.
+          En celular va de borde a borde para no quitarle ancho al juez. */}
+      <main className="max-w-3xl mx-auto px-4 py-6 bg-gray-50/95 min-h-[calc(100vh-68px)]
+        sm:min-h-0 sm:my-6 sm:rounded-2xl sm:shadow-xl sm:shadow-black/20">
         <Outlet />
       </main>
     </div>
