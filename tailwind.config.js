@@ -7,19 +7,39 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Paleta de marca: magenta "rosa mexicano". Escala alineada a pink de
-        // Tailwind para mantener contraste WCAG AA en los pares usados.
+        // Paleta de marca: azul cobalto sacado del fondo oficial (2026-09-30).
+        // Reemplaza al rosa mexicano. brand-600 con texto blanco da 6.5:1 (WCAG AA).
         brand: {
-          50: '#FDF2F8',
-          100: '#FCE7F3',
-          200: '#FBCFE8',
-          300: '#F9A8D4',
-          400: '#F472B6',
-          500: '#EC4899',
-          600: '#DB2777',
-          700: '#BE185D',
-          800: '#9D174D',
-          900: '#831843',
+          50: '#EFF6FC',
+          100: '#DCEBF8',
+          200: '#B9D6F0',
+          300: '#86B8E3',
+          400: '#4B92D0',
+          500: '#2A74B8',
+          600: '#1F5E9E',
+          700: '#1A4C80',
+          800: '#163D66',
+          900: '#0F2D4F',
+          950: '#061A36',
+        },
+        // Turquesa de las joyas de la corona: acentos (pestaña activa, badges).
+        // Como texto sobre blanco usar 600 o más oscuro.
+        celeste: {
+          50: '#ECFAFC',
+          100: '#D5F3F7',
+          200: '#AAE6EF',
+          300: '#7FD6E3',
+          400: '#3FBFD4',
+          500: '#1FA3B8',
+          600: '#16849A',
+          700: '#136A7C',
+          800: '#135665',
+        },
+        // Azul marino del fondo: headers y sidebar, para que se integren con él.
+        marino: {
+          800: '#0B2548',
+          900: '#061A36',
+          950: '#001639',
         },
         // Dorado: solo como acento de mérito (1er lugar, totales líderes).
         gold: {
@@ -39,7 +59,7 @@ export default {
       keyframes: {
         // Flash de celda al recibir un valor nuevo (eco realtime / guardado)
         'flash-brand': {
-          '0%': { backgroundColor: '#FCE7F3' },
+          '0%': { backgroundColor: '#D5F3F7' },
           '100%': { backgroundColor: 'transparent' },
         },
       },
