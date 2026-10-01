@@ -92,7 +92,7 @@ interface FilaJuezProps {
 function FilaJuez({ juez }: FilaJuezProps) {
   return (
     <li className={`flex justify-between gap-3 ${juez.activo ? '' : 'opacity-60'}`}>
-      <span className="truncate">
+      <span className="min-w-0 truncate">
         {juez.nombre}
         {!juez.activo && <span className="ml-1 text-xs">(Inactivo)</span>}
       </span>
