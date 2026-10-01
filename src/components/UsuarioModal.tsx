@@ -31,6 +31,11 @@ function UsuarioModal({ usuario, onCrear, onActualizar, onClose }: Props) {
   const [role, setRole] = useState<Usuario['role']>(usuario?.role ?? 'juez')
   const [password, setPassword] = useState(generarPassword)
   const [errors, setErrors] = useState<FormErrors>({})
+
+  // Borra el error de un campo en cuanto se edita, sin esperar a reenviar.
+  const limpiarError = (campo: keyof FormErrors) =>
+    setErrors((prev) => (prev[campo] ? { ...prev, [campo]: undefined } : prev))
+
   const [submitting, setSubmitting] = useState(false)
 
   // Al crear, el modal pasa a mostrar las credenciales: es la única vez que la
@@ -167,7 +172,10 @@ function UsuarioModal({ usuario, onCrear, onActualizar, onClose }: Props) {
             id="full_name"
             type="text"
             value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            onChange={(e) => {
+              setFullName(e.target.value)
+              limpiarError('full_name')
+            }}
             disabled={submitting}
             className={claseInput(!!errors.full_name)}
             placeholder="Ej. Ana Ramírez"
@@ -182,7 +190,10 @@ function UsuarioModal({ usuario, onCrear, onActualizar, onClose }: Props) {
           <select
             id="role"
             value={role ?? 'juez'}
-            onChange={(e) => setRole(e.target.value as Usuario['role'])}
+            onChange={(e) => {
+              setRole(e.target.value as Usuario['role'])
+              limpiarError('role')
+            }}
             disabled={submitting}
             className={claseInput(!!errors.role)}
           >
@@ -201,7 +212,10 @@ function UsuarioModal({ usuario, onCrear, onActualizar, onClose }: Props) {
             id="email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              limpiarError('email')
+            }}
             // El correo es el identificador de acceso: cambiarlo dejaría al
             // usuario sin poder entrar con lo que ya le entregaste.
             disabled={submitting || esEdicion}
@@ -224,13 +238,19 @@ function UsuarioModal({ usuario, onCrear, onActualizar, onClose }: Props) {
                 id="password"
                 type="text"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  limpiarError('password')
+                }}
                 disabled={submitting}
                 className={`${claseInput(!!errors.password)} font-mono`}
               />
               <button
                 type="button"
-                onClick={() => setPassword(generarPassword())}
+                onClick={() => {
+                  setPassword(generarPassword())
+                  limpiarError('password')
+                }}
                 disabled={submitting}
                 className="px-3 py-2 border border-gray-300 text-slate-600 text-xs font-medium rounded-lg
                   hover:bg-gray-50 transition-colors whitespace-nowrap"

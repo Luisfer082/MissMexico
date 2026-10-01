@@ -24,6 +24,11 @@ function EdicionModal({ edicion, onClose, onGuardado }: Props) {
   const [name, setName] = useState(edicion?.name ?? '')
   const [year, setYear] = useState(edicion?.year?.toString() ?? new Date().getFullYear().toString())
   const [errors, setErrors] = useState<FormErrors>({})
+
+  // Borra el error de un campo en cuanto se edita, sin esperar a reenviar.
+  const limpiarError = (campo: keyof FormErrors) =>
+    setErrors((prev) => (prev[campo] ? { ...prev, [campo]: undefined } : prev))
+
   const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -116,7 +121,10 @@ function EdicionModal({ edicion, onClose, onGuardado }: Props) {
               id="name"
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value)
+                limpiarError('name')
+              }}
               disabled={submitting}
               className={`w-full px-3 py-2 border rounded-lg text-sm text-slate-900 placeholder-slate-400
                 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-colors
@@ -135,7 +143,10 @@ function EdicionModal({ edicion, onClose, onGuardado }: Props) {
               type="number"
               min={2000}
               value={year}
-              onChange={(e) => setYear(e.target.value)}
+              onChange={(e) => {
+                setYear(e.target.value)
+                limpiarError('year')
+              }}
               disabled={submitting}
               className={`w-full px-3 py-2 border rounded-lg text-sm text-slate-900 placeholder-slate-400
                 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-colors

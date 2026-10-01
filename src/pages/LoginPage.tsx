@@ -25,6 +25,11 @@ function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({})
+
+  // Borra el error de un campo en cuanto se edita, sin esperar a reenviar.
+  const limpiarError = (campo: 'email' | 'password') =>
+    setErrors((prev) => (prev[campo] ? { ...prev, [campo]: undefined } : prev))
+
   const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -116,7 +121,10 @@ function LoginPage() {
                 type="email"
                 autoComplete="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  limpiarError('email')
+                }}
                 className={`w-full px-3 py-2 border rounded-lg text-sm text-slate-900 placeholder-slate-400
                   focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
                   transition-colors ${errors.email ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
@@ -138,7 +146,10 @@ function LoginPage() {
                 type="password"
                 autoComplete="current-password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  limpiarError('password')
+                }}
                 className={`w-full px-3 py-2 border rounded-lg text-sm text-slate-900 placeholder-slate-400
                   focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
                   transition-colors ${errors.password ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}

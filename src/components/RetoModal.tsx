@@ -26,6 +26,11 @@ function RetoModal({ edicionId, reto, onClose, onGuardado }: Props) {
   const [description, setDescription] = useState(reto?.description ?? '')
   const [orderNum, setOrderNum] = useState(reto?.order_num?.toString() ?? '')
   const [errors, setErrors] = useState<FormErrors>({})
+
+  // Borra el error de un campo en cuanto se edita, sin esperar a reenviar.
+  const limpiarError = (campo: keyof FormErrors) =>
+    setErrors((prev) => (prev[campo] ? { ...prev, [campo]: undefined } : prev))
+
   const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -106,7 +111,10 @@ function RetoModal({ edicionId, reto, onClose, onGuardado }: Props) {
               id="name"
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value)
+                limpiarError('name')
+              }}
               disabled={submitting}
               className={`w-full px-3 py-2 border rounded-lg text-sm text-slate-900 placeholder-slate-400
                 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-colors
@@ -126,7 +134,10 @@ function RetoModal({ edicionId, reto, onClose, onGuardado }: Props) {
               min={1}
               max={99}
               value={orderNum}
-              onChange={(e) => setOrderNum(e.target.value)}
+              onChange={(e) => {
+                setOrderNum(e.target.value)
+                limpiarError('order_num')
+              }}
               disabled={submitting}
               className={`w-full px-3 py-2 border rounded-lg text-sm text-slate-900 placeholder-slate-400
                 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-colors
@@ -146,7 +157,10 @@ function RetoModal({ edicionId, reto, onClose, onGuardado }: Props) {
             id="description"
             rows={3}
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => {
+              setDescription(e.target.value)
+              limpiarError('description')
+            }}
             disabled={submitting}
             className={`w-full px-3 py-2 border rounded-lg text-sm text-slate-900 placeholder-slate-400 resize-none
               focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent transition-colors

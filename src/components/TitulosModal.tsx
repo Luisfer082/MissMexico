@@ -259,7 +259,16 @@ function TitulosModal({ edicionId, edicionNombre, onClose }: Props) {
                       <input
                         type="text"
                         value={nombres[t.id] ?? ''}
-                        onChange={(e) => setNombres((prev) => ({ ...prev, [t.id]: e.target.value }))}
+                        onChange={(e) => {
+                          setNombres((prev) => ({ ...prev, [t.id]: e.target.value }))
+                          // Borra el error de esta fila en cuanto se edita.
+                          setErrores((prev) => {
+                            if (!prev[t.id]) return prev
+                            const copia = { ...prev }
+                            delete copia[t.id]
+                            return copia
+                          })
+                        }}
                         disabled={submitting}
                         aria-label={`Nombre del título ${t.order_num}`}
                         className={`w-full px-3 py-2 border rounded-lg text-sm text-slate-900 placeholder-slate-400
@@ -317,7 +326,10 @@ function TitulosModal({ edicionId, edicionNombre, onClose }: Props) {
                     <input
                       type="text"
                       value={nuevoNombre}
-                      onChange={(e) => setNuevoNombre(e.target.value)}
+                      onChange={(e) => {
+                        setNuevoNombre(e.target.value)
+                        setErrorNuevo(null)
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault()

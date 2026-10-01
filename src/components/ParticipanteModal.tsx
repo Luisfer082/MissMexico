@@ -69,6 +69,11 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
   // Resalta la zona de arrastre durante el dragover.
   const [arrastrando, setArrastrando] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
+
+  // Borra el error de un campo en cuanto se edita, sin esperar a reenviar.
+  const limpiarError = (campo: keyof FormErrors) =>
+    setErrors((prev) => (prev[campo] ? { ...prev, [campo]: undefined } : prev))
+
   const [submitting, setSubmitting] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -271,7 +276,10 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
               id="full_name"
               type="text"
               value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
+              onChange={(e) => {
+                setFullName(e.target.value)
+                limpiarError('full_name')
+              }}
               disabled={submitting}
               className={`${inputBase} ${errors.full_name ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
               placeholder="Ej. María Fernanda García López"
@@ -291,7 +299,10 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
                 min={1}
                 max={999}
                 value={sashNumber}
-                onChange={(e) => setSashNumber(e.target.value)}
+                onChange={(e) => {
+                  setSashNumber(e.target.value)
+                  limpiarError('sash_number')
+                }}
                 disabled={submitting}
                 className={`${inputBase} ${errors.sash_number ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                 placeholder="1"
@@ -307,7 +318,10 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
                 id="region"
                 type="text"
                 value={region}
-                onChange={(e) => setRegion(e.target.value)}
+                onChange={(e) => {
+                  setRegion(e.target.value)
+                  limpiarError('region')
+                }}
                 disabled={submitting}
                 className={`${inputBase} ${errors.region ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
                 placeholder="Ej. Jalisco"
