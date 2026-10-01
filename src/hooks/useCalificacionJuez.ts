@@ -28,7 +28,11 @@ export interface UseCalificacionJuezResult {
   syncNow: () => void
 }
 
-const claveStorage = (roundId: string) => `juez_scores_${roundId}`
+// La clave lleva el juez Y la ronda. Con solo la ronda, dos jueces que usan
+// la misma tableta compartían cola: el segundo veía las notas del primero
+// (regla 5) y le enviaba como suyas las que no alcanzaron a sincronizar.
+// Las claves viejas (`juez_scores_<ronda>`) se ignoran: no se sabe de quién son.
+const claveStorage = (judgeId: string, roundId: string) => `juez_scores_${judgeId}_${roundId}`
 const k = (participantId: string, challengeId: string) => `${participantId}:${challengeId}`
 
 // Máximo de filas por upsert. Una etapa real cabe de sobra en un solo lote
@@ -57,6 +61,7 @@ export function useCalificacionJuez(
   scoresIniciales: ScoreJuezInicial[],
 ): UseCalificacionJuezResult {
   const user = useAppStore((s) => s.user)
+  const userId = user?.id ?? null
 
   const [scores, setScores] = useState<Map<string, EntradaScore>>(new Map())
   const [online, setOnline] = useState<boolean>(() => navigator.onLine)
@@ -77,16 +82,16 @@ export function useCalificacionJuez(
   // Persistencia en localStorage (la cola sobrevive recargas y cierres de pestaña).
   const persist = useCallback(
     (map: Map<string, EntradaScore>) => {
-      if (!ronda) return
+      if (!ronda || !userId) return
       const obj: Record<string, EntradaScore> = {}
       for (const [key, val] of map) obj[key] = val
       try {
-        localStorage.setItem(claveStorage(ronda.id), JSON.stringify(obj))
+        localStorage.setItem(claveStorage(userId, ronda.id), JSON.stringify(obj))
       } catch {
         // Cuota llena / modo privado: no es fatal, el estado en memoria sigue vivo.
       }
     },
-    [ronda],
+    [ronda, userId],
   )
 
   // ─── Sembrado al cambiar de ronda ──────────────────────────────────────────
@@ -108,7 +113,7 @@ export function useCalificacionJuez(
       map.set(k(s.participant_id, s.challenge_id), { score: s.score, synced: true })
     }
     try {
-      const raw = localStorage.getItem(claveStorage(ronda.id))
+      const raw = userId ? localStorage.getItem(claveStorage(userId, ronda.id)) : null
       if (raw) {
         const stored = JSON.parse(raw) as Record<string, EntradaScore>
         for (const [key, val] of Object.entries(stored)) {
@@ -120,7 +125,7 @@ export function useCalificacionJuez(
       // localStorage corrupto: ignoramos y usamos solo el servidor.
     }
     setScores(map)
-  }, [ronda, scoresIniciales])
+  }, [ronda, scoresIniciales, userId])
 
   // ─── Sincronización ────────────────────────────────────────────────────────
   const sync = useCallback(async () => {
