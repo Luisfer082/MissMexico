@@ -213,10 +213,22 @@ export function useCalificacionJuez(
         persist(siguiente)
         return siguiente
       })
-      void sync()
+      // El envío NO se dispara aquí: sync() lee scoresRef, que todavía no
+      // tiene esta nota (se actualiza tras el render). Lo dispara el efecto
+      // de abajo, ya con el estado confirmado.
     },
-    [persist, sync],
+    [persist],
   )
+
+  // Cada cambio del estado con notas sin confirmar intenta enviarlas. Corre
+  // después del efecto que refresca scoresRef (se declaran en ese orden), así
+  // que sync() ya ve la nota recién puesta. Antes setScore llamaba a sync()
+  // con el ref viejo: la última nota capturada esperaba al reintento de 15 s
+  // o a la siguiente nota. Un error no cambia `scores`, así que no hay bucle:
+  // los reintentos siguen siendo cosa del intervalo y de la reconexión.
+  useEffect(() => {
+    if ([...scores.values()].some((v) => !v.synced)) void sync()
+  }, [scores, sync])
 
   const getScore = useCallback(
     (participantId: string, challengeId: string): number | undefined =>
