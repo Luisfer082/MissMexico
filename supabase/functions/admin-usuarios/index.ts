@@ -123,8 +123,8 @@ Deno.serve(async (req: Request) => {
       // email_confirm: el usuario queda listo para entrar sin pasar por correo.
       // El trigger on_auth_user_created arma su fila en profiles con estos metadatos.
       // El rol va en app_metadata, NO en user_metadata: user_metadata lo puede
-      // escribir el propio cliente al registrarse, y desde la migracion
-      // 20261001000000 el trigger solo confia en app_metadata.
+      // escribir el propio cliente al registrarse. Ojo: el perfil NO toma el
+      // rol de aqui (ver abajo); app_metadata queda como copia de referencia.
       const { data, error: errCrear } = await admin.auth.admin.createUser({
         email,
         password,
@@ -138,6 +138,23 @@ Deno.serve(async (req: Request) => {
         return error(
           dup ? 'Ya existe un usuario con ese correo' : errCrear.message,
           dup ? 409 : 400,
+        )
+      }
+
+      // El rol se fija aqui, explicito. GoTrue inserta el usuario SIN el
+      // app_metadata y lo escribe en un update posterior, asi que el trigger
+      // handle_new_user (que corre en el insert) nunca lo ve y el perfil
+      // quedaba sin rol. Con la service_role el trigger de proteccion de
+      // profiles lo deja pasar.
+      const { error: errRol } = await admin
+        .from('profiles')
+        .update({ role })
+        .eq('id', data.user.id)
+
+      if (errRol) {
+        return error(
+          `El usuario se creó pero no se le pudo asignar el rol: ${errRol.message}. Edítalo para asignarlo.`,
+          500,
         )
       }
 

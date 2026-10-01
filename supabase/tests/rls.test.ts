@@ -201,11 +201,16 @@ describe('alta de usuarios: el rol no lo decide el cliente', () => {
     expect(r.filas[0]).toEqual({ role: null, full_name: 'H' })
   })
 
-  it('la admin API (app_metadata) SÍ asigna rol', async () => {
+  // GoTrue inserta el usuario SIN app_metadata y lo escribe en un update
+  // posterior: el trigger nunca ve el rol. Por eso la Edge Function lo fija en
+  // profiles después de crear al usuario, como service_role. Este caso imita
+  // esa secuencia real (insert sin rol → update de profiles).
+  it('alta por la Edge Function: el perfil nace sin rol y la service_role se lo fija', async () => {
     const id = uuid(1, 91)
-    await como(null, `insert into auth.users (id, email, raw_app_meta_data) values ($1, 'a@x.mx', '{"role":"anunciador"}')`, [id])
-    const r = await como(null, 'select role from profiles where id = $1', [id])
-    expect(r.filas[0].role).toBe('anunciador')
+    await como(null, `insert into auth.users (id, email, raw_user_meta_data) values ($1, 'a@x.mx', '{"full_name":"A"}')`, [id])
+    expect((await como(null, 'select role from profiles where id = $1', [id])).filas[0].role).toBeNull()
+    expect((await como(null, `update profiles set role = 'anunciador' where id = $1`, [id])).afectadas).toBe(1)
+    expect((await como(null, 'select role from profiles where id = $1', [id])).filas[0].role).toBe('anunciador')
   })
 })
 
