@@ -57,36 +57,40 @@ function RetoModal({ edicionId, reto, onClose, onGuardado }: Props) {
       edition_id: edicionId,
     }
 
-    await toast.promise(
-      (async () => {
-        if (esEdicion) {
-          const { error } = await supabase
-            .from('challenges')
-            .update(datos)
-            .eq('id', reto.id)
+    try {
+      await toast.promise(
+        (async () => {
+          if (esEdicion) {
+            const { error } = await supabase
+              .from('challenges')
+              .update(datos)
+              .eq('id', reto.id)
 
-          if (error) throw error
-        } else {
-          const { error } = await supabase
-            .from('challenges')
-            .insert(datos)
+            if (error) throw error
+          } else {
+            const { error } = await supabase
+              .from('challenges')
+              .insert(datos)
 
-          if (error) throw error
+            if (error) throw error
+          }
+
+          onGuardado()
+          onClose()
+        })(),
+        {
+          loading: esEdicion ? 'Actualizando reto...' : 'Creando reto...',
+          success: esEdicion ? 'Reto actualizado' : 'Reto creado',
+          error: (err: unknown) => {
+            return mensajeError(err, 'Error al guardar')
+          },
         }
-
-        onGuardado()
-        onClose()
-      })(),
-      {
-        loading: esEdicion ? 'Actualizando reto...' : 'Creando reto...',
-        success: esEdicion ? 'Reto actualizado' : 'Reto creado',
-        error: (err: unknown) => {
-          return mensajeError(err, 'Error al guardar')
-        },
-      }
-    )
-
-    setSubmitting(false)
+      )
+    } catch {
+      // toast.promise ya notificó el error; solo evitamos dejar el formulario trabado.
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (

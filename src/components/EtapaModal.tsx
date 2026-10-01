@@ -60,36 +60,40 @@ function EtapaModal({ edicionId, etapa, onClose, onGuardado }: Props) {
       edition_id: edicionId,
     }
 
-    await toast.promise(
-      (async () => {
-        if (esEdicion) {
-          const { error } = await supabase
-            .from('stages')
-            .update(datos)
-            .eq('id', etapa.id)
+    try {
+      await toast.promise(
+        (async () => {
+          if (esEdicion) {
+            const { error } = await supabase
+              .from('stages')
+              .update(datos)
+              .eq('id', etapa.id)
 
-          if (error) throw error
-        } else {
-          const { error } = await supabase
-            .from('stages')
-            .insert(datos)
+            if (error) throw error
+          } else {
+            const { error } = await supabase
+              .from('stages')
+              .insert(datos)
 
-          if (error) throw error
+            if (error) throw error
+          }
+
+          onGuardado()
+          onClose()
+        })(),
+        {
+          loading: esEdicion ? 'Actualizando etapa...' : 'Creando etapa...',
+          success: esEdicion ? 'Etapa actualizada' : 'Etapa creada',
+          error: (err: unknown) => {
+            return mensajeError(err, 'Error al guardar')
+          },
         }
-
-        onGuardado()
-        onClose()
-      })(),
-      {
-        loading: esEdicion ? 'Actualizando etapa...' : 'Creando etapa...',
-        success: esEdicion ? 'Etapa actualizada' : 'Etapa creada',
-        error: (err: unknown) => {
-          return mensajeError(err, 'Error al guardar')
-        },
-      }
-    )
-
-    setSubmitting(false)
+      )
+    } catch {
+      // toast.promise ya notificó el error; solo evitamos dejar el formulario trabado.
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (

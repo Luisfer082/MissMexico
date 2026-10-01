@@ -79,18 +79,23 @@ function TitulosModal({ edicionId, edicionNombre, onClose }: Props) {
 
   const handleGenerar = async () => {
     setSubmitting(true)
-    await toast.promise(
-      (async () => {
-        await seedTitulos(edicionId)
-        setRecarga((n) => n + 1)
-      })(),
-      {
-        loading: 'Generando títulos...',
-        success: 'Títulos estándar generados',
-        error: (err: unknown) => mensajeError(err, 'Error al generar'),
-      },
-    )
-    setSubmitting(false)
+    try {
+      await toast.promise(
+        (async () => {
+          await seedTitulos(edicionId)
+          setRecarga((n) => n + 1)
+        })(),
+        {
+          loading: 'Generando títulos...',
+          success: 'Títulos estándar generados',
+          error: (err: unknown) => mensajeError(err, 'Error al generar'),
+        },
+      )
+    } catch {
+      // toast.promise ya notificó el error; solo evitamos dejar el formulario trabado.
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleAgregar = async () => {
@@ -106,60 +111,70 @@ function TitulosModal({ edicionId, edicionNombre, onClose }: Props) {
     const siguiente = titulos.reduce((max, t) => Math.max(max, t.order_num), 0) + 1
 
     setSubmitting(true)
-    await toast.promise(
-      (async () => {
-        const { data, error } = await supabase
-          .from('titles')
-          .insert({
-            edition_id: edicionId,
-            name: result.data,
-            order_num: siguiente,
-            kind: nuevoTipo,
-          })
-          .select()
-          .single()
-        if (error) throw error
+    try {
+      await toast.promise(
+        (async () => {
+          const { data, error } = await supabase
+            .from('titles')
+            .insert({
+              edition_id: edicionId,
+              name: result.data,
+              order_num: siguiente,
+              kind: nuevoTipo,
+            })
+            .select()
+            .single()
+          if (error) throw error
 
-        setTitulos((prev) => [...prev, data])
-        setNombres((prev) => ({ ...prev, [data.id]: data.name }))
-        setNuevoNombre('')
-      })(),
-      {
-        loading: 'Agregando título...',
-        success: 'Título agregado',
-        error: (err: unknown) => mensajeError(err, 'Error al agregar'),
-      },
-    )
-    setSubmitting(false)
+          setTitulos((prev) => [...prev, data])
+          setNombres((prev) => ({ ...prev, [data.id]: data.name }))
+          setNuevoNombre('')
+        })(),
+        {
+          loading: 'Agregando título...',
+          success: 'Título agregado',
+          error: (err: unknown) => mensajeError(err, 'Error al agregar'),
+        },
+      )
+    } catch {
+      // toast.promise ya notificó el error; solo evitamos dejar el formulario trabado.
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleBorrar = async (titulo: Titulo) => {
     setPorBorrar(null)
     setSubmitting(true)
-    await toast.promise(
-      (async () => {
-        const { error } = await supabase.from('titles').delete().eq('id', titulo.id)
-        if (error) throw error
+    try {
+      await toast.promise(
+        (async () => {
+          const { error } = await supabase.from('titles').delete().eq('id', titulo.id)
+          if (error) throw error
 
-        setTitulos((prev) => prev.filter((t) => t.id !== titulo.id))
-        setNombres((prev) => {
-          const copia = { ...prev }
-          delete copia[titulo.id]
-          return copia
-        })
-        setAsignados((prev) => {
-          const copia = new Set(prev)
-          copia.delete(titulo.id)
-          return copia
-        })
-      })(),
-      {
-        loading: 'Quitando título...',
-        success: 'Título quitado',
-        error: (err: unknown) => mensajeError(err, 'Error al quitar'),
-      },
-    )
-    setSubmitting(false)
+          setTitulos((prev) => prev.filter((t) => t.id !== titulo.id))
+          setNombres((prev) => {
+            const copia = { ...prev }
+            delete copia[titulo.id]
+            return copia
+          })
+          setAsignados((prev) => {
+            const copia = new Set(prev)
+            copia.delete(titulo.id)
+            return copia
+          })
+        })(),
+        {
+          loading: 'Quitando título...',
+          success: 'Título quitado',
+          error: (err: unknown) => mensajeError(err, 'Error al quitar'),
+        },
+      )
+    } catch {
+      // toast.promise ya notificó el error; solo evitamos dejar el formulario trabado.
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleGuardar = async () => {
@@ -182,24 +197,29 @@ function TitulosModal({ edicionId, edicionNombre, onClose }: Props) {
     }
 
     setSubmitting(true)
-    await toast.promise(
-      (async () => {
-        for (const t of cambiados) {
-          const { error } = await supabase
-            .from('titles')
-            .update({ name: nombres[t.id].trim() })
-            .eq('id', t.id)
-          if (error) throw error
-        }
-        onClose()
-      })(),
-      {
-        loading: 'Guardando títulos...',
-        success: 'Títulos actualizados',
-        error: (err: unknown) => mensajeError(err, 'Error al guardar'),
-      },
-    )
-    setSubmitting(false)
+    try {
+      await toast.promise(
+        (async () => {
+          for (const t of cambiados) {
+            const { error } = await supabase
+              .from('titles')
+              .update({ name: nombres[t.id].trim() })
+              .eq('id', t.id)
+            if (error) throw error
+          }
+          onClose()
+        })(),
+        {
+          loading: 'Guardando títulos...',
+          success: 'Títulos actualizados',
+          error: (err: unknown) => mensajeError(err, 'Error al guardar'),
+        },
+      )
+    } catch {
+      // toast.promise ya notificó el error; solo evitamos dejar el formulario trabado.
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (

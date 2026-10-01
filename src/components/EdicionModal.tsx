@@ -54,49 +54,53 @@ function EdicionModal({ edicion, onClose, onGuardado }: Props) {
       year: result.data.year,
     }
 
-    await toast.promise(
-      (async () => {
-        if (esEdicion) {
-          const { error } = await supabase
-            .from('editions')
-            .update(datos)
-            .eq('id', edicion.id)
+    try {
+      await toast.promise(
+        (async () => {
+          if (esEdicion) {
+            const { error } = await supabase
+              .from('editions')
+              .update(datos)
+              .eq('id', edicion.id)
 
-          if (error) throw error
-        } else {
-          const { data: creada, error } = await supabase
-            .from('editions')
-            .insert(datos)
-            .select('id')
-            .single()
+            if (error) throw error
+          } else {
+            const { data: creada, error } = await supabase
+              .from('editions')
+              .insert(datos)
+              .select('id')
+              .single()
 
-          if (error) throw error
+            if (error) throw error
 
-          // Seed del catálogo de títulos (6 títulos + 2 finalistas). Si falla,
-          // la edición ya existe: avisar sin revertir; el modal "Títulos" de
-          // Ediciones permite generarlos después.
-          try {
-            await seedTitulos(creada.id)
-          } catch {
-            toast.error(
-              'Edición creada, pero no se generaron sus títulos. Usa el botón "Títulos" para generarlos.',
-            )
+            // Seed del catálogo de títulos (6 títulos + 2 finalistas). Si falla,
+            // la edición ya existe: avisar sin revertir; el modal "Títulos" de
+            // Ediciones permite generarlos después.
+            try {
+              await seedTitulos(creada.id)
+            } catch {
+              toast.error(
+                'Edición creada, pero no se generaron sus títulos. Usa el botón "Títulos" para generarlos.',
+              )
+            }
           }
+
+          onGuardado()
+          onClose()
+        })(),
+        {
+          loading: esEdicion ? 'Actualizando edición...' : 'Creando edición...',
+          success: esEdicion ? 'Edición actualizada' : 'Edición creada',
+          error: (err: unknown) => {
+            return mensajeError(err, 'Error al guardar')
+          },
         }
-
-        onGuardado()
-        onClose()
-      })(),
-      {
-        loading: esEdicion ? 'Actualizando edición...' : 'Creando edición...',
-        success: esEdicion ? 'Edición actualizada' : 'Edición creada',
-        error: (err: unknown) => {
-          return mensajeError(err, 'Error al guardar')
-        },
-      }
-    )
-
-    setSubmitting(false)
+      )
+    } catch {
+      // toast.promise ya notificó el error; solo evitamos dejar el formulario trabado.
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
