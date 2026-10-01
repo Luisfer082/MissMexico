@@ -277,7 +277,10 @@ Deno.serve(async (req: Request) => {
       // auth.users, asi que borrar al usuario se llevaria por delante sus
       // calificaciones y romperia el historial del certamen. La UI ya esconde
       // el boton en ese caso; esto es la defensa real.
-      const [{ count: scores }, { count: rondas }] = await Promise.all([
+      const [
+        { count: scores, error: errScores },
+        { count: rondas, error: errRondas },
+      ] = await Promise.all([
         admin
           .from('judge_scores')
           .select('id', { count: 'exact', head: true })
@@ -288,14 +291,20 @@ Deno.serve(async (req: Request) => {
           .eq('judge_id', userId),
       ])
 
-      if ((scores ?? 0) > 0) {
+      // Si un conteo falla, count llega null y antes contaba como 0: se borraba
+      // al usuario (y en cascada sus calificaciones) por un error transitorio.
+      if (errScores || errRondas || scores === null || rondas === null) {
+        return error('No se pudo verificar el historial del usuario. Intenta de nuevo.', 500)
+      }
+
+      if (scores > 0) {
         return error(
           'Este usuario ya tiene calificaciones registradas. Desactívalo en vez de eliminarlo.',
           409,
         )
       }
 
-      if ((rondas ?? 0) > 0) {
+      if (rondas > 0) {
         return error(
           'Este usuario está asignado a una ronda de jueces. Quítalo de la ronda o desactívalo.',
           409,
