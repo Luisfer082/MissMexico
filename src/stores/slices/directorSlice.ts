@@ -431,14 +431,17 @@ export const createDirectorSlice: StateCreator<DirectorState> = (set, get) => {
           .eq('edition_id', edicionId)
         if (errFilas) throw errFilas
 
-        const actual = get()
+        // Lo guardado es lo que SE MANDÓ (`s`), no el estado actual: la UI no
+        // bloquea el drag mientras guarda, y un cambio hecho con el guardado en
+        // vuelo se daba por guardado sin haber llegado a la BD (y destrababa
+        // "Enviar al anunciador" con asignaciones que la BD no tenía).
         set({
           directorAsignacionesFilas: filas ?? [],
-          directorRankingGuardado: [...actual.directorRanking],
-          directorAsignacionesGuardadas: { ...actual.directorAsignaciones },
-          hayCambiosSinGuardar: false,
+          directorRankingGuardado: [...s.directorRanking],
+          directorAsignacionesGuardadas: { ...s.directorAsignaciones },
           directorGuardando: false,
         })
+        marcarCambios()
       } catch (err) {
         set({ directorGuardando: false })
         throw new Error(mensajeError(err, 'No se pudieron guardar los cambios'), { cause: err })
