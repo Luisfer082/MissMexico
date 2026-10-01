@@ -14,6 +14,6 @@ export default defineConfig({
     // Node basta: lo que se prueba en este bloque son funciones puras, sin DOM.
     // Cuando haga falta renderizar hooks se añade jsdom + testing-library.
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'supabase/tests/**/*.test.ts'],
   },
 })
