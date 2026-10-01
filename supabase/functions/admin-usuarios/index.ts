@@ -122,11 +122,15 @@ Deno.serve(async (req: Request) => {
 
       // email_confirm: el usuario queda listo para entrar sin pasar por correo.
       // El trigger on_auth_user_created arma su fila en profiles con estos metadatos.
+      // El rol va en app_metadata, NO en user_metadata: user_metadata lo puede
+      // escribir el propio cliente al registrarse, y desde la migracion
+      // 20261001000000 el trigger solo confia en app_metadata.
       const { data, error: errCrear } = await admin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
-        user_metadata: { full_name: fullName, role },
+        user_metadata: { full_name: fullName },
+        app_metadata: { role },
       })
 
       if (errCrear) {
@@ -178,7 +182,8 @@ Deno.serve(async (req: Request) => {
       // Los metadatos de Auth se mantienen alineados con profiles: si algun
       // dia se recrea el perfil desde el trigger, no revive el rol viejo.
       await admin.auth.admin.updateUserById(userId, {
-        user_metadata: { full_name: fullName, role },
+        user_metadata: { full_name: fullName },
+        app_metadata: { role },
       })
 
       return responder({ ok: true })
