@@ -19,6 +19,11 @@ function EdicionesPage() {
   const [modalAbierto, setModalAbierto] = useState(false)
   const [edicionEditando, setEdicionEditando] = useState<Edicion | undefined>(undefined)
 
+  // Edición pendiente de confirmar activación (null = sin confirmación abierta).
+  // Activar cambia en caliente lo que ven jueces, director y anunciador: un
+  // clic por error en pleno evento no puede pasar sin confirmar.
+  const [edicionAActivar, setEdicionAActivar] = useState<Edicion | null>(null)
+
   // Edición pendiente de confirmar borrado (null = sin confirmación abierta)
   const [edicionAEliminar, setEdicionAEliminar] = useState<Edicion | null>(null)
 
@@ -35,33 +40,41 @@ function EdicionesPage() {
     if (errorEdiciones) toast.error(errorEdiciones)
   }, [errorEdiciones])
 
-  const handleActivar = async (edicion: Edicion) => {
-    await toast.promise(
-      (async () => {
-        // Paso 1: apagar la edición activa actual (si existe). Es necesario
-        // hacerlo primero porque el índice único solo permite una activa.
-        const { error: errOff } = await supabase
-          .from('editions')
-          .update({ is_active: false })
-          .eq('is_active', true)
-        if (errOff) throw errOff
+  const handleConfirmarActivar = async () => {
+    if (!edicionAActivar) return
+    const edicion = edicionAActivar
+    setEdicionAActivar(null)
 
-        // Paso 2: encender la seleccionada.
-        const { error: errOn } = await supabase
-          .from('editions')
-          .update({ is_active: true })
-          .eq('id', edicion.id)
-        if (errOn) throw errOn
+    try {
+      await toast.promise(
+        (async () => {
+          // Paso 1: apagar la edición activa actual (si existe). Es necesario
+          // hacerlo primero porque el índice único solo permite una activa.
+          const { error: errOff } = await supabase
+            .from('editions')
+            .update({ is_active: false })
+            .eq('is_active', true)
+          if (errOff) throw errOff
 
-        recargar()
-        void refrescarEdicionActiva()
-      })(),
-      {
-        loading: 'Activando edición...',
-        success: `"${edicion.name}" es ahora la edición activa`,
-        error: (err: unknown) => mensajeError(err, 'Error al activar'),
-      }
-    )
+          // Paso 2: encender la seleccionada.
+          const { error: errOn } = await supabase
+            .from('editions')
+            .update({ is_active: true })
+            .eq('id', edicion.id)
+          if (errOn) throw errOn
+
+          recargar()
+          void refrescarEdicionActiva()
+        })(),
+        {
+          loading: 'Activando edición...',
+          success: `"${edicion.name}" es ahora la edición activa`,
+          error: (err: unknown) => mensajeError(err, 'Error al activar'),
+        }
+      )
+    } catch {
+      // toast.promise ya notificó el error.
+    }
   }
 
   const handleConfirmarEliminar = async () => {
@@ -170,7 +183,7 @@ function EdicionesPage() {
                     <div className="flex items-center justify-end gap-2">
                       {!e.is_active && (
                         <button
-                          onClick={() => void handleActivar(e)}
+                          onClick={() => setEdicionAActivar(e)}
                           className="px-3 py-1 text-xs font-medium text-green-700 border border-green-200
                             hover:bg-green-50 rounded-md transition-colors"
                         >
@@ -223,6 +236,17 @@ function EdicionesPage() {
           edicionId={edicionTitulos.id}
           edicionNombre={edicionTitulos.name}
           onClose={() => setEdicionTitulos(null)}
+        />
+      )}
+
+      {/* Confirmación de activación (reversible: basta una, no doble) */}
+      {edicionAActivar && (
+        <ConfirmDialog
+          titulo="Activar edición"
+          mensaje={`¿Activar "${edicionAActivar.name}"? Los jueces, el director y el anunciador pasarán a ver esta edición de inmediato.`}
+          textoConfirmar="Activar"
+          onConfirmar={() => void handleConfirmarActivar()}
+          onCancelar={() => setEdicionAActivar(null)}
         />
       )}
 
