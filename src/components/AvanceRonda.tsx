@@ -11,8 +11,11 @@ interface Props {
 // ronda). Solo informa: nunca bloquea el cierre, para que un juez que se fue
 // o se quedó sin batería no deje la etapa sin poder cerrarse en pleno evento.
 //
-// Se listan TODOS los jueces de la ronda, no solo a los que les falta: si a
-// alguno se le pierde la asignación tiene que verse en pantalla.
+// Se listan solo los jueces a los que les FALTA algo (pedido de Luis,
+// 2026-10-01: con todos era difícil ver quién falta); los completos se resumen
+// en una línea. El filtro va sobre `avance.jueces` (activos E inactivos), no
+// sobre `incompletos` (solo activos): así un juez desactivado con faltantes no
+// desaparece, que es el fallo que corrigió daf093c.
 function AvanceRonda({ avance, loading, error, onRevisar }: Props) {
   if (loading) {
     return (
@@ -35,6 +38,8 @@ function AvanceRonda({ avance, loading, error, onRevisar }: Props) {
   if (!avance) return null
 
   const faltan = !avance.completa
+  const conFaltantes = avance.jueces.filter((j) => j.capturadas < j.esperadas)
+  const terminaron = avance.jueces.length - conFaltantes.length
 
   return (
     <div
@@ -52,11 +57,20 @@ function AvanceRonda({ avance, loading, error, onRevisar }: Props) {
             : `Los ${avance.totalJuecesActivos} jueces enviaron todas sus calificaciones.`}
       </p>
 
-      <ul className="mt-2 space-y-0.5">
-        {avance.jueces.map((j) => (
-          <FilaJuez key={j.id} juez={j} />
-        ))}
-      </ul>
+      {conFaltantes.length > 0 && (
+        <ul className="mt-2 space-y-0.5">
+          {conFaltantes.map((j) => (
+            <FilaJuez key={j.id} juez={j} />
+          ))}
+        </ul>
+      )}
+
+      {faltan && (
+        <p className="mt-1 text-xs">
+          {terminaron} de {avance.jueces.length}{' '}
+          {avance.jueces.length === 1 ? 'juez terminó' : 'jueces terminaron'}.
+        </p>
+      )}
 
       {faltan && (
         <>
@@ -76,14 +90,13 @@ interface FilaJuezProps {
 }
 
 function FilaJuez({ juez }: FilaJuezProps) {
-  const completo = juez.capturadas >= juez.esperadas
   return (
     <li className={`flex justify-between gap-3 ${juez.activo ? '' : 'opacity-60'}`}>
       <span className="truncate">
         {juez.nombre}
         {!juez.activo && <span className="ml-1 text-xs">(Inactivo)</span>}
       </span>
-      <span className={`shrink-0 tabular-nums ${completo ? '' : 'font-semibold'}`}>
+      <span className="shrink-0 font-semibold tabular-nums">
         {juez.capturadas} de {juez.esperadas}
       </span>
     </li>
