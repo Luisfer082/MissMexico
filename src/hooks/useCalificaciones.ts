@@ -77,7 +77,7 @@ export function useCalificaciones(edicionId: string | undefined): UseCalificacio
         ] = await Promise.all([
           supabase
             .from('participants')
-            .select('id, full_name, region, sash_number')
+            .select('id, full_name, region, sash_number, photo_url')
             .eq('edition_id', edicionId)
             .order('sash_number', { ascending: true }),
           supabase

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import ScoreCell from './ScoreCell'
+import FotoParticipante from './FotoParticipante'
 import type { ParticipanteCalif, RetoCalif, ScoreEntry } from '../types/calificacion'
 
 interface Props {
@@ -160,19 +161,19 @@ function MatrizCalificaciones({ participantes, retos, getScore, onSaveScore }: P
                   ].join(' ')}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    {/* Badge con número de banda */}
-                    <span
-                      className={[
-                        'flex-shrink-0 inline-flex items-center justify-center',
-                        'w-7 h-7 rounded-full text-xs font-bold',
-                        'transition-colors duration-150',
-                        filaActiva
-                          ? 'bg-brand-600 text-white'
-                          : 'bg-brand-100 text-brand-700',
+                    {/* Foto con la banda en la esquina; sin foto, solo la banda */}
+                    <FotoParticipante
+                      nombre={p.full_name}
+                      photoUrl={p.photo_url}
+                      fallback={p.sash_number}
+                      banda={p.sash_number}
+                      className="w-8 h-8 rounded-full"
+                      claseFallback={[
+                        'text-xs font-bold transition-colors duration-150',
+                        filaActiva ? 'bg-brand-600 text-white' : 'bg-brand-100 text-brand-700',
                       ].join(' ')}
-                    >
-                      {p.sash_number}
-                    </span>
+                      ampliable
+                    />
 
                     {/* Nombre y región truncados */}
                     <div className="min-w-0">

@@ -10,6 +10,7 @@ const participante = (id: string, sash: number): ParticipanteCalif => ({
   full_name: `Participante ${sash}`,
   region: 'Jalisco',
   sash_number: sash,
+  photo_url: null,
 })
 
 const score = (id: string, participantId: string, valor: number): ScoreEntry => ({

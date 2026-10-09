@@ -1,4 +1,5 @@
 import type { LeaderboardRow } from '../types/calificacion'
+import FotoParticipante from './FotoParticipante'
 
 interface Props {
   rows: LeaderboardRow[]
@@ -85,12 +86,24 @@ function LeaderboardPanel({ rows }: Props) {
                   </span>
                 </td>
 
-                {/* Nombre y región */}
+                {/* Foto, nombre y región */}
                 <td className="px-4 py-3">
-                  <p className={['truncate', esTop3 ? 'font-semibold text-slate-900' : 'font-medium text-slate-900'].join(' ')}>
-                    {row.participant.full_name}
-                  </p>
-                  <p className="text-xs text-slate-400 truncate">{row.participant.region}</p>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <FotoParticipante
+                      nombre={row.participant.full_name}
+                      photoUrl={row.participant.photo_url}
+                      fallback={row.participant.sash_number}
+                      banda={row.participant.sash_number}
+                      className="w-8 h-8 rounded-full"
+                      ampliable
+                    />
+                    <div className="min-w-0">
+                      <p className={['truncate', esTop3 ? 'font-semibold text-slate-900' : 'font-medium text-slate-900'].join(' ')}>
+                        {row.participant.full_name}
+                      </p>
+                      <p className="text-xs text-slate-400 truncate">{row.participant.region}</p>
+                    </div>
+                  </div>
                 </td>
 
                 {/* Puntos del encargado (challenge_scores) */}

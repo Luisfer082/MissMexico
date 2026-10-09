@@ -7,6 +7,7 @@ export interface ParticipanteCalif {
   full_name: string
   region: string
   sash_number: number
+  photo_url: string | null
 }
 
 export interface RetoCalif {
