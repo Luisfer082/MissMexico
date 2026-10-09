@@ -5,6 +5,7 @@
 
 import { useMemo } from 'react'
 import BotonesExportar from '../../components/BotonesExportar'
+import FotoParticipante from '../../components/FotoParticipante'
 import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import { usePromediosDirector } from '../../hooks/usePromediosDirector'
 import { useAppStore } from '../../stores/useAppStore'
@@ -55,6 +56,15 @@ function PromediosPage() {
   const filas = useMemo(
     () => calcularFilasPromedio(puntajesDeRonda, totalesEncargado),
     [puntajesDeRonda, totalesEncargado],
+  )
+
+  // Fotos (Fase 11): salen de las participantes que DirectorLayout ya carga en
+  // el store para Ranking y Títulos, en vez de agregarlas a la consulta de
+  // puntajes, que comparten la exportación y el módulo del encargado.
+  const participantes = useAppStore((s) => s.directorParticipantes)
+  const fotoPorId = useMemo(
+    () => new Map(participantes.map((p) => [p.id, p.photo_url])),
+    [participantes],
   )
 
   // ─── Estados de carga / error / vacío ─────────────────────────────────────
@@ -209,10 +219,21 @@ function PromediosPage() {
                   </td>
                   <td className="px-4 py-2.5 text-slate-500 tabular-nums">{fila.sash}</td>
                   <td className="px-4 py-2.5 text-slate-900 font-medium">
-                    {fila.name}
-                    <span className="block text-xs text-slate-400 font-normal truncate max-w-[10rem]">
-                      {fila.region}
-                    </span>
+                    <div className="flex items-center gap-2.5">
+                      <FotoParticipante
+                        nombre={fila.name}
+                        photoUrl={fotoPorId.get(fila.participant_id) ?? null}
+                        fallback={fila.name.charAt(0).toUpperCase()}
+                        className="w-10 h-12 rounded-lg"
+                        ampliable
+                      />
+                      <div className="min-w-0">
+                        {fila.name}
+                        <span className="block text-xs text-slate-400 font-normal truncate max-w-[10rem]">
+                          {fila.region}
+                        </span>
+                      </div>
+                    </div>
                   </td>
                   {retos.map((r) => {
                     const v = fila.porReto.get(r.id)
