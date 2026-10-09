@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ParticipanteOpcion } from '../hooks/useRondasJueces'
+import FotoParticipante from './FotoParticipante'
 
 interface Props {
   participantes: ParticipanteOpcion[]
@@ -188,13 +189,15 @@ function SelectorParticipantesDrawer({ participantes, seleccionInicial, onConfir
                       }`}
                     >
                       <CheckboxVisual marcado={marcado} />
-                      <span
-                        className={`inline-flex items-center justify-center w-[38px] h-[38px] rounded-full text-sm font-bold flex-shrink-0 ${
-                          TINTES[i % TINTES.length]
-                        }`}
-                      >
-                        {p.full_name.charAt(0).toUpperCase()}
-                      </span>
+                      {/* Foto en formato tarjeta; sin foto, la inicial sobre color.
+                          No es ampliable: tocarla debe marcar la casilla. */}
+                      <FotoParticipante
+                        nombre={p.full_name}
+                        photoUrl={p.photo_url}
+                        fallback={p.full_name.charAt(0).toUpperCase()}
+                        className="w-12 h-14 rounded-lg"
+                        claseFallback={`text-base font-bold ${TINTES[i % TINTES.length]}`}
+                      />
                       <span className="min-w-0">
                         <span className="block text-sm font-medium text-slate-900 truncate">{p.full_name}</span>
                         <span className="block text-xs text-slate-400 truncate">
