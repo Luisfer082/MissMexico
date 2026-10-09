@@ -7,9 +7,10 @@ import { BUCKET_FOTOS, rutaEnBucket, rutaMiniatura } from './url-foto'
 // Ancho máximo del lado largo tras redimensionar. Una foto vertical de retrato
 // a 800px de ancho ronda los 150–300 KB en JPEG, suficiente para lista y proyección.
 const MAX_ANCHO = 800
-// Miniatura para los avatares (Fase 11): ~10-15 KB. Cubre un avatar de 48px en
-// pantallas 3x; con 32 participantes son ~400 KB por dispositivo en vez de ~8 MB.
-const MAX_ANCHO_MINIATURA = 200
+// Miniatura para avatares y tarjetas (Fase 11): ~20-30 KB. Cubre la tarjeta de
+// 80px del juez en pantallas 3x sin verse borrosa; con 32 participantes son
+// ~1 MB por dispositivo en vez de ~8 MB.
+const MAX_ANCHO_MINIATURA = 320
 const CALIDAD_JPEG = 0.8
 // Los nombres son UUID y nunca se sobrescriben (upsert: false), así que el
 // navegador y el CDN pueden guardarlas un año sin riesgo de servir una vieja.

@@ -88,14 +88,16 @@ function FilaFinalista({ finalista, value, disabled, onCommit }: FilaProps) {
       }`}
     >
       <div className="flex items-center gap-3 min-w-0">
-        {/* Con foto, la banda queda en la esquina: el juez identifica por banda.
-            Tocarla abre la foto completa (Fase 11). */}
+        {/* Foto en formato tarjeta (vertical, como un retrato) para que el juez
+            reconozca a la participante de un vistazo; la banda queda en la
+            esquina. Tocarla abre la foto completa (Fase 11). */}
         <FotoParticipante
           nombre={finalista.full_name}
           photoUrl={finalista.photo_url}
           fallback={finalista.sash_number}
           banda={finalista.sash_number}
-          className="w-10 h-10 md:w-11 md:h-11 rounded-full"
+          className="w-16 h-20 md:w-20 md:h-24 rounded-lg"
+          claseFallback="bg-brand-100 text-brand-700 text-lg font-bold"
           ampliable
         />
         <div className="min-w-0">

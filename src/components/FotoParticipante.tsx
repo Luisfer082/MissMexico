@@ -87,7 +87,7 @@ function FotoParticipante({
         type="button"
         onClick={() => setAmpliada(true)}
         aria-label={`Ver foto de ${nombre}`}
-        className="flex-shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+        className="flex-shrink-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
       >
         {avatar}
       </button>
