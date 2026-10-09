@@ -5,34 +5,11 @@ import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 import { useConsulta } from '../../hooks/useConsulta'
 import ParticipanteModal from '../../components/ParticipanteModal'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import FotoParticipante from '../../components/FotoParticipante'
 import type { Tables } from '../../types/database'
 import { mensajeError } from '../../utils/mensaje-error'
 
 type Participante = Tables<'participants'>
-
-// Avatar con fallback robusto: si la imagen falla o no existe, muestra la inicial
-// con gradiente brand. Nunca deja el espacio vacío con display:none.
-function AvatarParticipante({ nombre, photoUrl }: { nombre: string; photoUrl: string | null }) {
-  const [imgError, setImgError] = useState(false)
-  const inicial = nombre.charAt(0).toUpperCase()
-
-  if (photoUrl && !imgError) {
-    return (
-      <img
-        src={photoUrl}
-        alt={`Foto de ${nombre}`}
-        className="w-12 h-12 rounded-lg object-cover bg-brand-100 flex-shrink-0"
-        onError={() => setImgError(true)}
-      />
-    )
-  }
-
-  return (
-    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center flex-shrink-0 select-none">
-      <span className="text-white text-base font-bold">{inicial}</span>
-    </div>
-  )
-}
 
 function ParticipantesPage() {
   const { edicion, loading: loadingEdicion } = useEdicionActiva()
@@ -277,7 +254,14 @@ function ParticipantesPage() {
                   {/* Foto + nombre + región en una sola celda (perfil compacto) */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <AvatarParticipante nombre={p.full_name} photoUrl={p.photo_url} />
+                      <FotoParticipante
+                        nombre={p.full_name}
+                        photoUrl={p.photo_url}
+                        fallback={p.full_name.charAt(0).toUpperCase()}
+                        className="w-12 h-12 rounded-lg"
+                        claseFallback="bg-gradient-to-br from-brand-400 to-brand-600 text-white text-base font-bold"
+                        ampliable
+                      />
                       <div className="min-w-0">
                         <p className="font-semibold text-slate-900 leading-snug truncate">{p.full_name}</p>
                         <p className="text-xs text-slate-400 mt-0.5 truncate">{p.region}</p>
