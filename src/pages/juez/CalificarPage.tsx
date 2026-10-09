@@ -6,6 +6,7 @@ import { useCalificacionJuez } from '../../hooks/useCalificacionJuez'
 import SyncStatusBadge from '../../components/SyncStatusBadge'
 import SelectorReto from '../../components/SelectorReto'
 import type { AvanceReto } from '../../components/SelectorReto'
+import FotoParticipante from '../../components/FotoParticipante'
 import { normalizar } from '../../utils/texto'
 
 // ─── Celda de puntaje (1-10) ──────────────────────────────────────────────────
@@ -87,9 +88,16 @@ function FilaFinalista({ finalista, value, disabled, onCommit }: FilaProps) {
       }`}
     >
       <div className="flex items-center gap-3 min-w-0">
-        <span className="inline-flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex-shrink-0">
-          {finalista.sash_number}
-        </span>
+        {/* Con foto, la banda queda en la esquina: el juez identifica por banda.
+            Tocarla abre la foto completa (Fase 11). */}
+        <FotoParticipante
+          nombre={finalista.full_name}
+          photoUrl={finalista.photo_url}
+          fallback={finalista.sash_number}
+          banda={finalista.sash_number}
+          className="w-10 h-10 md:w-11 md:h-11 rounded-full"
+          ampliable
+        />
         <div className="min-w-0">
           <p className="font-medium text-slate-900 text-sm truncate">{finalista.full_name}</p>
           <p className="text-slate-400 text-xs truncate">{finalista.region}</p>
