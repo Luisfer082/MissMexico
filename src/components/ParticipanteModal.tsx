@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { supabase } from '../lib/supabase'
 import { participanteSchema } from '../schemas/participante'
-import { borrarFotoParticipante, comprimirImagen, subirFotoParticipante } from '../utils/foto-participante'
+import {
+  borrarFotoParticipante,
+  comprimirImagen,
+  subirFotoParticipante,
+  type FotoComprimida,
+} from '../utils/foto-participante'
 import { mensajeError } from '../utils/mensaje-error'
 import type { Tables } from '../types/database'
 
@@ -58,10 +63,10 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
   const [fullName, setFullName] = useState(participante?.full_name ?? '')
   const [sashNumber, setSashNumber] = useState(participante?.sash_number?.toString() ?? '')
   const [region, setRegion] = useState(participante?.region ?? '')
-  // URL ya guardada (al editar). La foto nueva vive en blobPendiente hasta el submit.
+  // URL ya guardada (al editar). La foto nueva vive en fotoPendiente hasta el submit.
   const [photoUrl, setPhotoUrl] = useState(participante?.photo_url ?? '')
-  // Imagen comprimida pendiente de subir; null si no se eligió una nueva.
-  const [blobPendiente, setBlobPendiente] = useState<Blob | null>(null)
+  // Foto comprimida (completa + miniatura) pendiente de subir; null si no se eligió una nueva.
+  const [fotoPendiente, setFotoPendiente] = useState<FotoComprimida | null>(null)
   // Object URL del blob pendiente, para la vista previa local antes de subir.
   const [previewLocal, setPreviewLocal] = useState('')
   // true mientras se comprime la imagen recién soltada.
@@ -107,9 +112,9 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
 
     setProcesando(true)
     try {
-      const blob = await comprimirImagen(file)
-      setBlobPendiente(blob)
-      setPreviewLocal(URL.createObjectURL(blob))
+      const foto = await comprimirImagen(file)
+      setFotoPendiente(foto)
+      setPreviewLocal(URL.createObjectURL(foto.completa))
     } catch (err) {
       toast.error(mensajeError(err, 'No se pudo procesar la imagen'))
     } finally {
@@ -119,7 +124,7 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
 
   // Quita la foto (nueva o existente) y vuelve a la inicial.
   const quitarFoto = () => {
-    setBlobPendiente(null)
+    setFotoPendiente(null)
     setPhotoUrl('')
     setPreviewLocal('')
   }
@@ -157,8 +162,8 @@ function ParticipanteModal({ edicionId, participante, onClose, onGuardado }: Pro
         // la URL guardada (o null si se quitó). Va dentro del try para que un fallo
         // de subida cancele el guardado y dispare el toast de error.
         let urlFoto: string | null = result.data.photo_url || null
-        if (blobPendiente) {
-          urlFoto = await subirFotoParticipante(blobPendiente, edicionId)
+        if (fotoPendiente) {
+          urlFoto = await subirFotoParticipante(fotoPendiente, edicionId)
         }
 
         const datos = {
