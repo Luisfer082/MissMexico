@@ -21,6 +21,7 @@ export interface ParticipanteDirector {
   full_name: string
   region: string
   sash_number: number
+  photo_url: string | null
 }
 
 /** Borrador de asignaciones: título → participante (null = slot vacío). */
@@ -142,7 +143,7 @@ export const createDirectorSlice: StateCreator<DirectorState> = (set, get) => {
         supabase.from('title_assignments').select('*').eq('edition_id', edicionId),
         supabase
           .from('participants')
-          .select('id, full_name, region, sash_number')
+          .select('id, full_name, region, sash_number, photo_url')
           .eq('edition_id', edicionId)
           .order('sash_number', { ascending: true }),
         supabase
@@ -250,7 +251,7 @@ export const createDirectorSlice: StateCreator<DirectorState> = (set, get) => {
         ] = await Promise.all([
           supabase
             .from('participants')
-            .select('id, full_name, region, sash_number')
+            .select('id, full_name, region, sash_number, photo_url')
             .eq('edition_id', edicionId)
             .order('sash_number', { ascending: true }),
           supabase.from('title_assignments').select('*').eq('edition_id', edicionId),

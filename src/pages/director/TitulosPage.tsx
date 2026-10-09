@@ -27,6 +27,7 @@ import {
 import { useAppStore } from '../../stores/useAppStore'
 import type { ParticipanteDirector } from '../../stores/slices/directorSlice'
 import SlotTitulo from '../../components/SlotTitulo'
+import FotoParticipante from '../../components/FotoParticipante'
 import { normalizar } from '../../utils/texto'
 import { mensajeError } from '../../utils/mensaje-error'
 
@@ -44,9 +45,14 @@ const CLASES_TARJETA =
 function ContenidoTarjeta({ participante }: TarjetaProps) {
   return (
     <>
-      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex-shrink-0">
-        {participante.sash_number}
-      </span>
+      <FotoParticipante
+        nombre={participante.full_name}
+        photoUrl={participante.photo_url}
+        fallback={participante.sash_number}
+        banda={participante.sash_number}
+        className="w-9 h-9 rounded-full"
+        ampliable
+      />
       <div className="min-w-0 flex-1">
         <p className="font-medium text-slate-900 text-sm truncate">{participante.full_name}</p>
         <p className="text-slate-400 text-xs truncate">{participante.region}</p>

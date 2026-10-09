@@ -1,6 +1,7 @@
 import { useDroppable } from '@dnd-kit/core'
 import type { Tables } from '../types/database'
 import type { ParticipanteDirector } from '../stores/slices/directorSlice'
+import FotoParticipante from './FotoParticipante'
 
 interface Props {
   titulo: Tables<'titles'>
@@ -53,9 +54,14 @@ function SlotTitulo({ titulo, participante, enTurno, onAsignar, onQuitar }: Prop
       {participante ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-brand-100 text-brand-700 text-xs font-bold flex-shrink-0">
-              {participante.sash_number}
-            </span>
+            <FotoParticipante
+              nombre={participante.full_name}
+              photoUrl={participante.photo_url}
+              fallback={participante.sash_number}
+              banda={participante.sash_number}
+              className="w-9 h-9 rounded-full"
+              ampliable
+            />
             <div className="min-w-0">
               <p className="font-medium text-slate-900 text-sm truncate">{participante.full_name}</p>
               <p className="text-slate-400 text-xs truncate">{participante.region}</p>
