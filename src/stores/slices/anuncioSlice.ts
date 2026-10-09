@@ -40,6 +40,8 @@ export interface TituloAnuncio {
   titulo: string
   /** Participante que lo recibe, ya formateada para proyectar. */
   participante: string
+  /** Foto completa de la participante (Fase 11), o null si no tiene. */
+  fotoUrl: string | null
 }
 
 export interface AnuncioState {
@@ -101,7 +103,7 @@ export const createAnuncioSlice: StateCreator<AnuncioState> = (set, get) => ({
       ] = await Promise.all([
         supabase
           .from('title_assignments')
-          .select('id, title_id, titles(name, order_num), participants(full_name, region)')
+          .select('id, title_id, titles(name, order_num), participants(full_name, region, photo_url)')
           .eq('edition_id', edicionId),
         supabase
           .from('edition_publications')
@@ -143,6 +145,7 @@ export const createAnuncioSlice: StateCreator<AnuncioState> = (set, get) => ({
           titleId: a.title_id,
           titulo: a.titles?.name ?? '',
           participante: `${a.participants?.full_name ?? ''} · ${a.participants?.region ?? ''}`,
+          fotoUrl: a.participants?.photo_url ?? null,
         }))
 
       set({

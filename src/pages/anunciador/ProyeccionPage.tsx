@@ -17,6 +17,10 @@ import ConfirmDialog from '../../components/ConfirmDialog'
 
 const MS_OCULTAR_CONTROLES = 4000
 
+// Foto de la ganadora junto al título (Fase 11, a prueba por decisión de Luis
+// 2026-10-09). En false se vuelve a la proyección de solo texto.
+const MOSTRAR_FOTO = true
+
 function ProyeccionPage() {
   const {
     titulos,
@@ -42,6 +46,8 @@ function ProyeccionPage() {
 
   const [controlesVisibles, setControlesVisibles] = useState(true)
   const [confirmarReinicio, setConfirmarReinicio] = useState(false)
+  // Fotos que no cargaron: se proyecta solo el texto en vez de un hueco roto.
+  const [fotosFallidas, setFotosFallidas] = useState<string[]>([])
   const temporizador = useRef<number | null>(null)
 
   // Arranca (o reinicia) la cuenta para ocultar los controles. Separado de
@@ -66,6 +72,21 @@ function ProyeccionPage() {
   const terminado = reveladosCount >= titulos.length
   const enPantalla = reveladosCount > 0 ? titulos[reveladosCount - 1] : null
   const siguiente = terminado ? null : titulos[reveladosCount]
+
+  // Precarga las fotos de todos los títulos: al revelar, la foto tiene que
+  // aparecer en el acto, no descargarse delante del público. Son ~7 fotos de
+  // 150-300 KB y quedan en la caché del navegador.
+  useEffect(() => {
+    if (!MOSTRAR_FOTO) return
+    for (const t of titulos) {
+      if (t.fotoUrl) new Image().src = t.fotoUrl
+    }
+  }, [titulos])
+
+  const fotoEnPantalla =
+    MOSTRAR_FOTO && enPantalla?.fotoUrl && !fotosFallidas.includes(enPantalla.fotoUrl)
+      ? enPantalla.fotoUrl
+      : null
 
   useEffect(() => {
     programarOcultado()
@@ -135,6 +156,18 @@ function ProyeccionPage() {
           </p>
         ) : (
           <>
+            {fotoEnPantalla !== null && (
+              // min-h-0 + max-h en vh: la foto cede espacio antes que el texto
+              // en pantallas bajas (tableta horizontal), sin desbordar.
+              <img
+                key={enPantalla.id}
+                src={fotoEnPantalla}
+                alt={`Foto de ${enPantalla.participante}`}
+                onError={() => setFotosFallidas((prev) => [...prev, fotoEnPantalla])}
+                className="min-h-0 max-h-[50vh] w-auto max-w-full object-contain rounded-2xl
+                  shadow-2xl mb-[clamp(1rem,3vh,2.5rem)]"
+              />
+            )}
             <p className="text-brand-400 font-medium uppercase tracking-[0.2em] text-[clamp(0.875rem,2.5vw,2rem)]">
               {enPantalla.titulo}
             </p>
