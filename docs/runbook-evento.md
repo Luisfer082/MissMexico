@@ -25,8 +25,9 @@ de alta usuarios ni cerrar etapas.
 
 - [ ] Proyecto de Supabase **activo** (el plan gratuito lo pausa tras ~1 semana sin uso): entrar a la
       app y comprobar que carga.
-- [ ] Respaldo completo (plan gratuito = Supabase NO guarda backups): `npm run respaldo -- --con-fotos`
-      desde la laptop del encargado. Copiar la carpeta `respaldos/respaldo-<fecha>` a USB o nube.
+- [ ] Respaldo (plan gratuito = Supabase NO guarda backups): botón **Respaldo** en el panel del
+      encargado. Para copiar también las fotos: `npm run respaldo -- --con-fotos` desde la laptop.
+      Guardar los archivos en USB o nube: son confidenciales.
 - [ ] En Vercel, el deploy de producción es el congelado ([commit …]); nada nuevo en `main`.
 - [ ] Edición del evento **activa**, con participantes, fotos, etapas, retos y títulos.
 - [ ] Cuentas creadas y probadas: cada juez entra una vez desde SU dispositivo.
@@ -52,8 +53,8 @@ de alta usuarios ni cerrar etapas.
   se decide conscientemente.
 - **Cerrar una etapa es IRREVERSIBLE.** Lo hace solo el encargado, en voz alta, con el director
   presente.
-- Al cerrar cada etapa: **exportar el PDF** como respaldo en papel y correr `npm run respaldo`
-  (sin fotos, tarda segundos).
+- Al cerrar cada etapa: **exportar el PDF** como respaldo en papel y descargar el respaldo
+  con el botón **Respaldo** del panel (tarda segundos).
 
 ## 5. Si algo falla
 
@@ -93,6 +94,6 @@ de alta usuarios ni cerrar etapas.
 ## 6. Al terminar
 
 - [ ] Todas las etapas cerradas; exportar Excel y PDF finales.
-- [ ] Respaldo final: `npm run respaldo -- --con-fotos`.
+- [ ] Respaldo final: botón **Respaldo** + `npm run respaldo -- --con-fotos`.
 - [ ] Guardar los archivos en [ubicación] — son confidenciales.
 - [ ] Desactivar las cuentas de jueces.
