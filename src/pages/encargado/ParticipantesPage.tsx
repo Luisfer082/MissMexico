@@ -6,6 +6,7 @@ import { useConsulta } from '../../hooks/useConsulta'
 import ParticipanteModal from '../../components/ParticipanteModal'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import FotoParticipante from '../../components/FotoParticipante'
+import { borrarFotoParticipante } from '../../utils/foto-participante'
 import type { Tables } from '../../types/database'
 import { mensajeError } from '../../utils/mensaje-error'
 
@@ -51,22 +52,37 @@ function ParticipantesPage() {
     const participante = participanteAEliminar
     setParticipanteAEliminar(null)
 
-    await toast.promise(
-      (async () => {
-        const { error } = await supabase
-          .from('participants')
-          .delete()
-          .eq('id', participante.id)
+    try {
+      await toast.promise(
+        (async () => {
+          const { error } = await supabase
+            .from('participants')
+            .delete()
+            .eq('id', participante.id)
 
-        if (error) throw error
-        recargar()
-      })(),
-      {
-        loading: 'Eliminando...',
-        success: 'Participante eliminada',
-        error: (err: unknown) => mensajeError(err, 'Error al eliminar'),
-      }
-    )
+          if (error) throw error
+          recargar()
+
+          // La foto y su miniatura se quedaban huérfanas en el bucket. Va
+          // DESPUÉS del delete y best-effort: si falla, la participante ya se
+          // eliminó y lo único que queda es un archivo sin uso.
+          if (participante.photo_url) {
+            try {
+              await borrarFotoParticipante(participante.photo_url)
+            } catch {
+              // Objeto huérfano en el bucket; sin impacto funcional.
+            }
+          }
+        })(),
+        {
+          loading: 'Eliminando...',
+          success: 'Participante eliminada',
+          error: (err: unknown) => mensajeError(err, 'Error al eliminar'),
+        }
+      )
+    } catch {
+      // toast.promise ya mostró el error; evita la promesa rechazada sin manejar.
+    }
   }
 
   const handleAbrirNuevo = () => {
