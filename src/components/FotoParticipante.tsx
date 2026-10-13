@@ -2,6 +2,11 @@ import { useState } from 'react'
 import Modal from './Modal'
 import { urlMiniatura } from '../utils/url-foto'
 
+// URLs que fallaron con red, compartidas por TODA la app. Sin esto, cada
+// pantalla volvía a pedir la miniatura inexistente de las fotos subidas antes
+// de la Fase 11 (un 404 por foto en cada navegación). Vive lo que la pestaña.
+const URLS_FALLIDAS = new Set<string>()
+
 interface Props {
   nombre: string
   photoUrl: string | null
@@ -30,13 +35,21 @@ function FotoParticipante({
   banda,
   ampliable = false,
 }: Props) {
-  // URLs que ya fallaron. Se guarda la URL y no un índice para que, si cambia
+  // Fallas de ESTE avatar. Se guarda la URL y no un índice para que, si cambia
   // la foto de la participante, se intente de nuevo sin efecto de reseteo.
   const [fallidas, setFallidas] = useState<string[]>([])
+  const fallo = (u: string) => fallidas.includes(u) || URLS_FALLIDAS.has(u)
+
+  const registrarFallo = (u: string) => {
+    // Sin red (juez offline) la falla es pasajera: no se recuerda para toda la
+    // app, o la foto no volvería a intentarse al recuperar la conexión.
+    if (navigator.onLine) URLS_FALLIDAS.add(u)
+    setFallidas((prev) => [...prev, u])
+  }
   const [ampliada, setAmpliada] = useState(false)
 
   const candidatas = photoUrl ? [urlMiniatura(photoUrl), photoUrl] : []
-  const src = candidatas.find((u): u is string => u !== null && !fallidas.includes(u)) ?? null
+  const src = candidatas.find((u): u is string => u !== null && !fallo(u)) ?? null
 
   const avatar =
     src !== null ? (
@@ -47,7 +60,7 @@ function FotoParticipante({
           loading="lazy"
           decoding="async"
           draggable={false}
-          onError={() => setFallidas((prev) => [...prev, src])}
+          onError={() => registrarFallo(src)}
           // El radio se hereda del contenedor: recortar con overflow-hidden ahí
           // cortaría también el número de banda, que sobresale de la esquina.
           className="w-full h-full object-cover bg-brand-100 rounded-[inherit]"
@@ -70,7 +83,7 @@ function FotoParticipante({
     )
 
   // Sin foto que ampliar (o si la completa ya falló) el avatar es solo visual.
-  if (!ampliable || !photoUrl || fallidas.includes(photoUrl)) return avatar
+  if (!ampliable || !photoUrl || fallo(photoUrl)) return avatar
 
   // Los eventos se cortan aquí porque el avatar vive dentro de filas
   // arrastrables (director): sin esto, tocarlo o tocar dentro del visor
