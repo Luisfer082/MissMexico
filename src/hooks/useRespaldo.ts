@@ -82,7 +82,9 @@ function descargar(contenido: string, nombre: string) {
   a.href = url
   a.download = nombre
   a.click()
-  URL.revokeObjectURL(url)
+  // Liberar en el mismo tick puede cancelar la descarga en Safari (iPad) y a
+  // veces en Firefox: el navegador todavía no terminó de leer el blob.
+  window.setTimeout(() => URL.revokeObjectURL(url), 10_000)
 }
 
 export function useRespaldo() {
