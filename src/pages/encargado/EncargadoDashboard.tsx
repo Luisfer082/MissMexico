@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import BotonRespaldo from '../../components/BotonRespaldo'
 import { useEdicionActiva } from '../../hooks/useEdicionActiva'
 
 interface EstadisticasEdicion {
@@ -141,15 +142,22 @@ function EncargadoDashboard() {
         </div>
         <p className="text-slate-700 font-medium">No hay edición activa</p>
         <p className="text-slate-400 text-sm mt-1">Configura una edición desde la base de datos para comenzar.</p>
+        {/* El respaldo no depende de la edición activa: copia toda la BD. */}
+        <div className="mt-4">
+          <BotonRespaldo />
+        </div>
       </div>
     )
   }
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">{edicion.name}</h1>
-        <p className="text-slate-500 text-sm mt-1">Edición {edicion.year} — Panel de control</p>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">{edicion.name}</h1>
+          <p className="text-slate-500 text-sm mt-1">Edición {edicion.year} — Panel de control</p>
+        </div>
+        <BotonRespaldo />
       </div>
 
       {loadingStats ? (
