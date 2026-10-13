@@ -35,5 +35,5 @@ dist-ssr
 __pycache__/
 *.pyc
 
-# Respaldos de la BD (scripts/respaldo.mjs): datos personales, nunca al repo
+# Respaldos de fotos (scripts/respaldo-fotos.mjs): datos personales, nunca al repo
 respaldos/
