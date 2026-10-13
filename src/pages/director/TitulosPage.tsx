@@ -286,7 +286,9 @@ function TitulosPage() {
       {publicado && (
         <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
           Los títulos están <strong>enviados al anunciador</strong>, que ya puede proyectarlos.
-          Puedes retirarlos en cualquier momento: nada aquí es irreversible.
+          Puedes retirarlos en cualquier momento: nada aquí es irreversible.{' '}
+          <strong>Ojo:</strong> si cambias una asignación y guardas, el anunciador proyectará la
+          nueva en cuanto recargue, aunque el show ya haya empezado.
         </div>
       )}
 

@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import toast from 'react-hot-toast'
+import ConfirmDialog from './ConfirmDialog'
 import { useAppStore } from '../stores/useAppStore'
 import { mensajeError } from '../utils/mensaje-error'
 
@@ -10,10 +12,21 @@ function BarraGuardado() {
   const guardando = useAppStore((s) => s.directorGuardando)
   const guardar = useAppStore((s) => s.guardarDirector)
   const descartar = useAppStore((s) => s.descartarCambios)
+  // Títulos ya enviados al anunciador con asignaciones distintas a las
+  // guardadas (decisión de Luis 2026-10-13: AVISAR, no bloquear). Mover solo el
+  // ranking no cuenta: el anunciador no lo proyecta.
+  const cambiaLoEnviado = useAppStore((s) => {
+    if (!s.directorPublicado) return false
+    const borrador = s.directorAsignaciones
+    const guardadas = s.directorAsignacionesGuardadas
+    const titulos = new Set([...Object.keys(borrador), ...Object.keys(guardadas)])
+    return [...titulos].some((t) => (borrador[t] ?? null) !== (guardadas[t] ?? null))
+  })
+  const [confirmando, setConfirmando] = useState(false)
 
   if (!hayCambios) return null
 
-  const handleGuardar = () => {
+  const guardarAhora = () => {
     void toast.promise(guardar(), {
       loading: 'Guardando cambios...',
       success: 'Cambios guardados',
@@ -21,11 +34,18 @@ function BarraGuardado() {
     })
   }
 
+  const handleGuardar = () => {
+    if (cambiaLoEnviado) setConfirmando(true)
+    else guardarAhora()
+  }
+
   return (
     <div className="sticky bottom-0 z-20 -mx-4 mt-6 px-4 py-3 bg-amber-50 border-t border-amber-200">
       <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
         <p className="text-sm text-amber-900 font-medium min-w-0 truncate">
-          Tienes cambios sin guardar.
+          {cambiaLoEnviado
+            ? 'Cambios sin guardar en títulos ya enviados al anunciador.'
+            : 'Tienes cambios sin guardar.'}
         </p>
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
@@ -49,6 +69,19 @@ function BarraGuardado() {
           </button>
         </div>
       </div>
+
+      {confirmando && (
+        <ConfirmDialog
+          titulo="Cambiar títulos ya enviados"
+          mensaje="Los títulos ya están enviados al anunciador. Al guardar, el anunciador proyectará las nuevas asignaciones en cuanto recargue, aunque el show ya haya empezado. ¿Guardar de todos modos?"
+          textoConfirmar="Guardar de todos modos"
+          onConfirmar={() => {
+            setConfirmando(false)
+            guardarAhora()
+          }}
+          onCancelar={() => setConfirmando(false)}
+        />
+      )}
     </div>
   )
 }
