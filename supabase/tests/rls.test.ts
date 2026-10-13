@@ -41,6 +41,7 @@ create function auth.jwt() returns jsonb language sql stable as $$
 create table storage.buckets (id text primary key, name text, public boolean);
 create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text);
 alter table storage.objects enable row level security;
+grant select on storage.objects to anon, authenticated;
 create publication supabase_realtime;
 grant usage on schema public, auth, storage to anon, authenticated, service_role;
 grant execute on all functions in schema auth to anon, authenticated, service_role;
@@ -327,5 +328,30 @@ describe('cierres (reglas 1, 2 y 7)', () => {
   it('con la etapa cerrada no se califica ni se reabre', async () => {
     expect((await como(JUEZ2, UPSERT_SCORE, [JUEZ2, P1, C2, S2, 5])).error).not.toBeNull()
     expect((await como(ENC, `update stages set status = 'abierta' where id = $1`, [S2])).error).not.toBeNull()
+  })
+})
+
+describe('storage: el bucket de fotos no se lista sin sesión', () => {
+  // Revisión de seguridad 2026-10-13: con la publishable key cualquiera podía
+  // listar el bucket. Las fotos se siguen viendo por URL pública, que no pasa
+  // por esta RLS; aquí solo se prueba el listado (select sobre storage.objects).
+  beforeAll(async () => {
+    await como(null, `insert into storage.objects (bucket_id, name) values ('fotos-participantes', 'ed/foto.jpg')`)
+  })
+
+  it('un visitante anónimo NO puede listar las fotos', async () => {
+    await db.query(`select set_config('request.jwt.claims', '', false)`)
+    await db.query('set role anon')
+    try {
+      const r = await db.query(`select name from storage.objects where bucket_id = 'fotos-participantes'`)
+      expect(r.rows).toHaveLength(0)
+    } finally {
+      await db.query('reset role')
+    }
+  })
+
+  it('un usuario con sesión sí puede listarlas', async () => {
+    const r = await como(JUEZ, `select name from storage.objects where bucket_id = 'fotos-participantes'`)
+    expect(r.filas).toHaveLength(1)
   })
 })
