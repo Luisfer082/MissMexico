@@ -11,7 +11,8 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "test:watch": "vitest",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "respaldo": "node --env-file=.env --env-file-if-exists=.env.respaldo scripts/respaldo.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
