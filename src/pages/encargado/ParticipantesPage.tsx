@@ -47,6 +47,35 @@ function ParticipantesPage() {
     if (errorParticipantes) toast.error(errorParticipantes)
   }, [errorParticipantes])
 
+  // Una participante que estuvo en una etapa cerrada no se puede eliminar: el
+  // borrado arrastra sus filas de stage_participants y el trigger de etapa
+  // cerrada lo rechaza con el id de la etapa, que no le dice nada al encargado.
+  // Se revisa antes de abrir la confirmación y se explica con el nombre.
+  const handleSolicitarEliminar = async (participante: Participante) => {
+    try {
+      const { data, error } = await supabase
+        .from('stage_participants')
+        .select('stages!inner(name)')
+        .eq('participant_id', participante.id)
+        .eq('stages.status', 'cerrada')
+      if (error) throw error
+      const etapas = (data ?? []).map((fila) => fila.stages.name)
+      if (etapas.length > 0) {
+        const lista = etapas.map((n) => `"${n}"`).join(', ')
+        toast.error(
+          `No se puede eliminar a ${participante.full_name}: está en ${
+            etapas.length === 1 ? 'la etapa' : 'las etapas'
+          } ${lista}, que ya ${etapas.length === 1 ? 'está cerrada' : 'están cerradas'}.`,
+          { duration: 6000 },
+        )
+        return
+      }
+      setParticipanteAEliminar(participante)
+    } catch (err) {
+      toast.error(mensajeError(err, 'No se pudo revisar si la participante se puede eliminar'))
+    }
+  }
+
   const handleConfirmarEliminar = async () => {
     if (!participanteAEliminar) return
     const participante = participanteAEliminar
@@ -304,7 +333,7 @@ function ParticipantesPage() {
                         Editar
                       </button>
                       <button
-                        onClick={() => setParticipanteAEliminar(p)}
+                        onClick={() => void handleSolicitarEliminar(p)}
                         title={`Eliminar a ${p.full_name}`}
                         className="h-11 px-3 inline-flex items-center gap-1.5 text-xs font-medium
                           text-red-600 border border-red-100 rounded-lg
