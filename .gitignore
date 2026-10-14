@@ -37,3 +37,8 @@ __pycache__/
 
 # Respaldos de fotos (scripts/respaldo-fotos.mjs): datos personales, nunca al repo
 respaldos/
+
+# Configuración de asistentes de IA (agentes, skills, memoria): local, no va al repo
+.agents/
+.claude/
+.codex/
