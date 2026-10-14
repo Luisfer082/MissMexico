@@ -1,6 +1,7 @@
 {
   "name": "missmexico",
   "private": true,
+  "author": "Luis Hernández (https://github.com/Luisfer082)",
   "version": "0.0.0",
   "type": "module",
   "scripts": {

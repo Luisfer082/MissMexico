@@ -80,3 +80,7 @@ Importar el repositorio en Vercel (detecta Vite) y configurar `VITE_SUPABASE_URL
 - **Supabase plan gratuito:** el proyecto se pausa tras ~7 días sin uso. Entrar y reactivarlo
   días antes del evento.
 - La `service_role` key de Supabase es acceso total: nunca va en `.env`, en el código ni se comparte.
+
+## Desarrollo
+
+Luis Hernández — [github.com/Luisfer082](https://github.com/Luisfer082)
